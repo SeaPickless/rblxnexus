@@ -5,7 +5,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { Toast } from "@/components/Toast";
-import { ThemeScript } from "@/lib/theme.tsx";
+import { ThemeScript } from "@/lib/theme";
 
 const inter = Inter({ subsets: ["latin"] });
 
