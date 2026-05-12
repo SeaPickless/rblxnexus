@@ -5,7 +5,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { Toast } from "@/components/Toast";
 import { ThemeScript } from "@/lib/theme";
-import { SessionProvider } from "next-auth/react";
+import { Providers } from "@/components/Providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,7 +29,7 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body className={`${inter.className} rblx-body`}>
-        <SessionProvider>
+        <Providers>
           <Toast />
           <div className="rblx-shell">
             <Sidebar />
@@ -38,7 +38,7 @@ export default function RootLayout({
               <main className="rblx-content">{children}</main>
             </div>
           </div>
-        </SessionProvider>
+        </Providers>
       </body>
     </html>
   );
