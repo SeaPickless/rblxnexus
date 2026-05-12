@@ -1,26 +1,280 @@
-@import "tailwindcss";
+/* src/app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────
+   THEME DEFINITIONS
+   Each theme sets CSS custom properties on html[data-theme="..."]
+   Fallback (no attribute) = nexus-dark
+   ───────────────────────────────────────────────────────────── */
+
+:root,
+html[data-theme="nexus-dark"] {
+  --base:      #0B0C0D;
+  --surface:   #16181A;
+  --elevated:  #1E2124;
+  --accent:    #A020F0;
+  --accent-muted: rgba(160, 32, 240, 0.15);
+  --text-primary:   #F0F0F0;
+  --text-secondary: #9CA3AF;
+  --border:    rgba(255,255,255,0.07);
+  --shadow:    0 4px 24px rgba(0,0,0,0.6);
+}
+
+html[data-theme="midnight-blue"] {
+  --base:      #070B14;
+  --surface:   #0E1525;
+  --elevated:  #172035;
+  --accent:    #3B82F6;
+  --accent-muted: rgba(59, 130, 246, 0.15);
+  --text-primary:   #EFF6FF;
+  --text-secondary: #93C5FD;
+  --border:    rgba(59,130,246,0.12);
+  --shadow:    0 4px 24px rgba(0,0,0,0.7);
+}
+
+html[data-theme="cyber-green"] {
+  --base:      #001000;
+  --surface:   #001A00;
+  --elevated:  #002000;
+  --accent:    #00FF41;
+  --accent-muted: rgba(0, 255, 65, 0.10);
+  --text-primary:   #CCFFCC;
+  --text-secondary: #4AFF6A;
+  --border:    rgba(0,255,65,0.15);
+  --shadow:    0 4px 24px rgba(0,0,0,0.8);
+}
+
+html[data-theme="sunset-red"] {
+  --base:      #140808;
+  --surface:   #201010;
+  --elevated:  #2A1515;
+  --accent:    #EF4444;
+  --accent-muted: rgba(239, 68, 68, 0.15);
+  --text-primary:   #FEF2F2;
+  --text-secondary: #FCA5A5;
+  --border:    rgba(239,68,68,0.12);
+  --shadow:    0 4px 24px rgba(0,0,0,0.7);
+}
+
+html[data-theme="oled-black"] {
+  --base:      #000000;
+  --surface:   #0A0A0A;
+  --elevated:  #111111;
+  --accent:    #A020F0;
+  --accent-muted: rgba(160, 32, 240, 0.15);
+  --text-primary:   #FFFFFF;
+  --text-secondary: #A0A0A0;
+  --border:    rgba(255,255,255,0.06);
+  --shadow:    0 4px 24px rgba(0,0,0,0.9);
+}
+
+html[data-theme="light-mode"] {
+  --base:      #F5F5F5;
+  --surface:   #FFFFFF;
+  --elevated:  #EBEBEB;
+  --accent:    #7C3AED;
+  --accent-muted: rgba(124, 58, 237, 0.10);
+  --text-primary:   #111111;
+  --text-secondary: #555555;
+  --border:    rgba(0,0,0,0.08);
+  --shadow:    0 2px 12px rgba(0,0,0,0.08);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   GLOBAL RESET + BASE
+   ───────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   BODY — rblx-body
+   ───────────────────────────────────────────────────────────── */
+
+.rblx-body {
+  background-color: var(--base);
+  color: var(--text-primary);
+  min-height: 100dvh;
+  font-feature-settings: "kern" 1, "liga" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   APP SHELL — sidebar (fixed left) + main column
+   ───────────────────────────────────────────────────────────── */
+
+/* Sidebar width tokens — changed by compactSidebar toggle */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --sidebar-w: 220px;
+  --topbar-h: 56px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+.rblx-shell {
+  display: flex;
+  min-height: 100dvh;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* The main column sits to the right of the sidebar */
+.rblx-main-col {
+  flex: 1 1 0%;
+  min-width: 0;
+  margin-left: var(--sidebar-w);
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.25s ease;
+}
+
+/* Page content below the topbar */
+.rblx-content {
+  flex: 1 1 auto;
+  padding: 24px 28px;
+  background-color: var(--base);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SIDEBAR ITSELF (width + transition)
+   ───────────────────────────────────────────────────────────── */
+
+.rblx-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100dvh;
+  width: var(--sidebar-w);
+  background-color: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+  transition: width 0.25s ease, transform 0.25s ease;
+  overflow: hidden;
+}
+
+/* Compact sidebar via toggle class on body */
+body.compact-sidebar {
+  --sidebar-w: 48px;
+}
+
+/* Mobile: sidebar hidden off-screen, toggled by hamburger */
+@media (max-width: 767px) {
+  :root { --sidebar-w: 0px; }
+
+  .rblx-sidebar {
+    width: 220px;
+    transform: translateX(-100%);
+  }
+
+  .rblx-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .rblx-main-col {
+    margin-left: 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ─────────────────────────────────────────────────────────────
+   TOPBAR
+   ───────────────────────────────────────────────────────────── */
+
+.rblx-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: var(--topbar-h);
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  gap: 12px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ACCENT UTILITIES
+   ───────────────────────────────────────────────────────────── */
+
+.text-accent       { color: var(--accent); }
+.bg-accent         { background-color: var(--accent); }
+.bg-accent-muted   { background-color: var(--accent-muted); }
+.border-accent     { border-color: var(--accent); }
+.ring-accent       { --tw-ring-color: var(--accent); }
+
+/* ─────────────────────────────────────────────────────────────
+   SURFACE / ELEVATED UTILITIES
+   ───────────────────────────────────────────────────────────── */
+
+.bg-surface    { background-color: var(--surface); }
+.bg-elevated   { background-color: var(--elevated); }
+.text-primary  { color: var(--text-primary); }
+.text-secondary{ color: var(--text-secondary); }
+.border-default{ border-color: var(--border); }
+
+/* ─────────────────────────────────────────────────────────────
+   CARD
+   ───────────────────────────────────────────────────────────── */
+
+.rblx-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SCROLLBAR STYLING
+   ───────────────────────────────────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--elevated) transparent;
+}
+
+*::-webkit-scrollbar { width: 5px; height: 5px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background-color: var(--elevated);
+  border-radius: 99px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PERFORMANCE TOGGLE — no-animations
+   Applied to body by the toggle system (lib/toggles.ts)
+   ───────────────────────────────────────────────────────────── */
+
+body.no-animations *,
+body.no-animations *::before,
+body.no-animations *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LOW BANDWIDTH — hide all img / next-image wrappers
+   Avatar placeholders replace them (see components)
+   ───────────────────────────────────────────────────────────── */
+
+body.low-bandwidth .rblx-avatar-img,
+body.low-bandwidth .rblx-thumb-img {
+  display: none !important;
+}
+
+body.low-bandwidth .rblx-avatar-fallback,
+body.low-bandwidth .rblx-thumb-fallback {
+  display: flex !important;
 }
