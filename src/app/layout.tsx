@@ -1,4 +1,3 @@
-// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -6,6 +5,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
 import { Toast } from "@/components/Toast";
 import { ThemeScript } from "@/lib/theme";
+import { SessionProvider } from "next-auth/react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,36 +25,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      {/*
-        ThemeScript injects a tiny inline <script> that reads rn_theme and
-        rn_toggles from localStorage and sets data-theme + body classes
-        BEFORE the first paint — preventing any flash of wrong theme.
-      */}
       <head>
         <ThemeScript />
       </head>
       <body className={`${inter.className} rblx-body`}>
-        {/* Toast portal — rendered above everything */}
-        <Toast />
-
-        {/* App shell: sidebar + main column */}
-        <div className="rblx-shell">
-          <Sidebar />
-
-          <div className="rblx-main-col">
-            <Topbar />
-
-            {/* Page content */}
-            <main className="rblx-content">{children}</main>
+        <SessionProvider>
+          <Toast />
+          <div className="rblx-shell">
+            <Sidebar />
+            <div className="rblx-main-col">
+              <Topbar />
+              <main className="rblx-content">{children}</main>
+            </div>
           </div>
-        </div>
-
-        {/*
-          Global layout styles live in globals.css (Tailwind base +
-          CSS custom properties for every theme).  The classes below
-          are defined there rather than as inline Tailwind utilities so
-          that the theme CSS-variable system can reach them easily.
-        */}
+        </SessionProvider>
       </body>
     </html>
   );
