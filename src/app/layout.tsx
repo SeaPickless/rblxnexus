@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Orbitron, Rajdhani, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
+import SessionProviderWrapper from "@/components/SessionProviderWrapper";
 
 const orbitron = Orbitron({
   subsets: ["latin"],
@@ -32,7 +33,6 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.ico" },
 };
 
-// Runs synchronously before first paint — prevents theme/toggle flash
 const themeInitScript = `
 (function(){
   try{
@@ -63,7 +63,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           antialiased min-h-screen overflow-x-hidden
         `}
       >
-        {/* Scanline overlay — decorative, pointer-events: none */}
         <div
           aria-hidden="true"
           className="pointer-events-none fixed inset-0 z-[9998]"
@@ -72,7 +71,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(var(--color-accent-rgb),0.015) 2px,rgba(var(--color-accent-rgb),0.015) 4px)",
           }}
         />
-        {/* Ambient radial glow bottom-right */}
         <div
           aria-hidden="true"
           className="pointer-events-none fixed bottom-0 right-0 z-0 h-[600px] w-[600px] translate-x-1/3 translate-y-1/3"
@@ -82,7 +80,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
 
-        <div className="relative z-10">{children}</div>
+        <SessionProviderWrapper>
+          <div className="relative z-10">{children}</div>
+        </SessionProviderWrapper>
 
         <Toaster
           position="top-right"
