@@ -1,9 +1,13 @@
 // src/app/layout.tsx
+// Root layout — wraps entire app in SessionProvider so useSession()
+// works on the login page. Hub pages get their OWN SessionProvider
+// inside src/app/hub/layout.tsx.
+
 import type { Metadata } from "next";
 import { Orbitron, Rajdhani, JetBrains_Mono } from "next/font/google";
+import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
-import SessionProviderWrapper from "@/components/SessionProviderWrapper";
 
 const orbitron = Orbitron({
   subsets: ["latin"],
@@ -28,8 +32,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "RblxNexus — Your Roblox Command Center",
-  description:
-    "RblxNexus is a futuristic Roblox command center. Search players, scout games, monitor API health, track badges and more.",
+  description: "RblxNexus is a futuristic Roblox command center.",
   icons: { icon: "/favicon.ico" },
 };
 
@@ -63,6 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           antialiased min-h-screen overflow-x-hidden
         `}
       >
+        {/* Scanline overlay */}
         <div
           aria-hidden="true"
           className="pointer-events-none fixed inset-0 z-[9998]"
@@ -71,38 +75,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(var(--color-accent-rgb),0.015) 2px,rgba(var(--color-accent-rgb),0.015) 4px)",
           }}
         />
+        {/* Ambient glow */}
         <div
           aria-hidden="true"
           className="pointer-events-none fixed bottom-0 right-0 z-0 h-[600px] w-[600px] translate-x-1/3 translate-y-1/3"
           style={{
-            background:
-              "radial-gradient(circle,rgba(var(--color-accent-rgb),0.07) 0%,transparent 70%)",
+            background: "radial-gradient(circle,rgba(var(--color-accent-rgb),0.07) 0%,transparent 70%)",
           }}
         />
 
-        <SessionProviderWrapper>
+        <SessionProvider>
           <div className="relative z-10">{children}</div>
-        </SessionProviderWrapper>
+        </SessionProvider>
 
         <Toaster
           position="top-right"
           toastOptions={{
             duration: 3000,
             style: {
-              background: "var(--color-elevated)",
-              color: "var(--color-text-primary)",
-              border: "1px solid rgba(var(--color-accent-rgb),0.4)",
-              borderRadius: "6px",
-              fontFamily: "var(--font-rajdhani),sans-serif",
-              fontSize: "14px",
+              background:    "var(--color-elevated)",
+              color:         "var(--color-text-primary)",
+              border:        "1px solid rgba(var(--color-accent-rgb),0.4)",
+              borderRadius:  "6px",
+              fontFamily:    "var(--font-rajdhani),sans-serif",
+              fontSize:      "14px",
               letterSpacing: "0.03em",
-              boxShadow: "0 0 16px rgba(var(--color-accent-rgb),0.2)",
-            },
-            success: {
-              iconTheme: { primary: "var(--color-accent)", secondary: "var(--color-elevated)" },
-            },
-            error: {
-              iconTheme: { primary: "#EF4444", secondary: "var(--color-elevated)" },
+              boxShadow:     "0 0 16px rgba(var(--color-accent-rgb),0.2)",
             },
           }}
         />
