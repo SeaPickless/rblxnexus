@@ -1,44 +1,111 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Orbitron, Rajdhani, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/Sidebar";
-import { Topbar } from "@/components/Topbar";
-import { Toast } from "@/components/Toast";
-import { ThemeScript } from "@/lib/theme";
-import { Providers } from "@/components/Providers";
+import { Toaster } from "react-hot-toast";
 
-const inter = Inter({ subsets: ["latin"] });
+const orbitron = Orbitron({
+  subsets: ["latin"],
+  variable: "--font-orbitron",
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800", "900"],
+});
+
+const rajdhani = Rajdhani({
+  subsets: ["latin"],
+  variable: "--font-rajdhani",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
 
 export const metadata: Metadata = {
-  title: "Rblx Nexus — Your Roblox command center.",
+  title: "RblxNexus — Your Roblox Command Center",
   description:
-    "RblxNexus — Your Roblox command center. Everything you need, right where you need it.",
-  icons: {
-    icon: "/favicon.ico",
-  },
+    "RblxNexus is a futuristic Roblox command center. Search players, scout games, monitor API health, track badges and more.",
+  icons: { icon: "/favicon.ico" },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+// Runs synchronously before first paint — prevents theme/toggle flash
+const themeInitScript = `
+(function(){
+  try{
+    var VALID=["nexus-dark","midnight-blue","cyber-green","sunset-red","oled-black","light-mode"];
+    var saved=localStorage.getItem("rn_theme");
+    var theme=VALID.includes(saved)?saved:"nexus-dark";
+    document.documentElement.setAttribute("data-theme",theme);
+    var raw=localStorage.getItem("rn_toggles");
+    if(raw){
+      var t=JSON.parse(raw);
+      if(t.disableAnimations) document.body.classList.add("no-animations");
+      if(t.compactSidebar)    document.body.classList.add("compact-sidebar");
+    }
+  }catch(_){}
+})();
+`;
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <ThemeScript />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className={`${inter.className} rblx-body`}>
-        <Providers>
-          <Toast />
-          <div className="rblx-shell">
-            <Sidebar />
-            <div className="rblx-main-col">
-              <Topbar />
-              <main className="rblx-content">{children}</main>
-            </div>
-          </div>
-        </Providers>
+      <body
+        className={`
+          ${orbitron.variable} ${rajdhani.variable} ${jetbrainsMono.variable}
+          font-rajdhani bg-[var(--color-base)] text-[var(--color-text-primary)]
+          antialiased min-h-screen overflow-x-hidden
+        `}
+      >
+        {/* Scanline overlay — decorative, pointer-events: none */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-[9998]"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(var(--color-accent-rgb),0.015) 2px,rgba(var(--color-accent-rgb),0.015) 4px)",
+          }}
+        />
+        {/* Ambient radial glow bottom-right */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed bottom-0 right-0 z-0 h-[600px] w-[600px] translate-x-1/3 translate-y-1/3"
+          style={{
+            background:
+              "radial-gradient(circle,rgba(var(--color-accent-rgb),0.07) 0%,transparent 70%)",
+          }}
+        />
+
+        <div className="relative z-10">{children}</div>
+
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: "var(--color-elevated)",
+              color: "var(--color-text-primary)",
+              border: "1px solid rgba(var(--color-accent-rgb),0.4)",
+              borderRadius: "6px",
+              fontFamily: "var(--font-rajdhani),sans-serif",
+              fontSize: "14px",
+              letterSpacing: "0.03em",
+              boxShadow: "0 0 16px rgba(var(--color-accent-rgb),0.2)",
+            },
+            success: {
+              iconTheme: { primary: "var(--color-accent)", secondary: "var(--color-elevated)" },
+            },
+            error: {
+              iconTheme: { primary: "#EF4444", secondary: "var(--color-elevated)" },
+            },
+          }}
+        />
       </body>
     </html>
   );

@@ -1,29 +1,30 @@
+// src/app/api/auth/roblox/userinfo/route.ts
+//
+// CORS SOLUTION:
+// The browser calls /api/auth/roblox/userinfo (same origin — no CORS).
+// This server-side handler reads the encrypted Roblox token from the
+// httpOnly cookie and returns the stored user info.
+// The browser NEVER calls apis.roblox.com directly.
+
 import { NextRequest, NextResponse } from "next/server";
 import { getRobloxSession } from "@/lib/session";
 
 export async function GET(req: NextRequest) {
   const session = await getRobloxSession(req);
 
-  if (!session?.accessToken) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  if (!session) {
+    return NextResponse.json(
+      { error: "No Roblox session found. Please connect your Roblox account." },
+      { status: 401 }
+    );
   }
 
-  try {
-    const res = await fetch("https://apis.roblox.com/oauth/v1/userinfo", {
-      headers: { Authorization: `Bearer ${session.accessToken}` },
-    });
-
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: "Failed to fetch Roblox userinfo" },
-        { status: res.status }
-      );
-    }
-
-    const data = await res.json();
-    return NextResponse.json(data);
-  } catch (err) {
-    console.error("[roblox/userinfo]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
+  // Return only safe, non-sensitive fields to the browser
+  return NextResponse.json({
+    robloxId:       session.robloxId,
+    robloxUsername: session.robloxUsername,
+    robloxAvatar:   session.robloxAvatar,
+    expiresAt:      session.expiresAt,
+    connected:      true,
+  });
 }

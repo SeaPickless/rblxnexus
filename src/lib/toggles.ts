@@ -1,28 +1,24 @@
 // src/lib/toggles.ts
-// Performance toggle system for RblxNexus.
-//
-// Toggles are stored in localStorage under key "rn_toggles".
-// Body classes + CSS variables are applied immediately at boot via ThemeScript.
-// At runtime, call setToggle() to flip a toggle on/off.
-//
-// Available toggles (all default OFF):
-//   disableAnimations — adds class no-animations to body
-//   compactSidebar    — adds class compact-sidebar to body (48px wide sidebar)
-//   autoRefresh       — enables 60s auto-ping in API Health Monitor hub
-//   showUserIds       — show numeric Roblox IDs next to usernames app-wide
-//   lowBandwidth      — skip avatar/thumb images, show initials fallbacks
+// Performance toggle state management.
+// Reads/writes the rn_toggles localStorage key.
+// All toggle access in components must go through these helpers.
 
-const LS_KEY = "rn_toggles";
+const STORAGE_KEY = "rn_toggles";
 
 export interface Toggles {
+  /** Adds .no-animations to body — kills all CSS animations/transitions */
   disableAnimations: boolean;
-  compactSidebar:    boolean;
-  autoRefresh:       boolean;
-  showUserIds:       boolean;
-  lowBandwidth:      boolean;
+  /** Collapses sidebar to 48px icon-only mode */
+  compactSidebar: boolean;
+  /** Auto-pings all API Health endpoints every 60s while hub is active */
+  autoRefresh: boolean;
+  /** Shows numeric Roblox user IDs alongside usernames everywhere */
+  showUserIds: boolean;
+  /** Skips avatar/thumbnail images — shows initials placeholders instead */
+  lowBandwidth: boolean;
 }
 
-const DEFAULTS: Toggles = {
+export const DEFAULT_TOGGLES: Toggles = {
   disableAnimations: false,
   compactSidebar:    false,
   autoRefresh:       false,
@@ -30,116 +26,98 @@ const DEFAULTS: Toggles = {
   lowBandwidth:      false,
 };
 
-// Map toggle key → body CSS class (only for toggles that need one)
-const BODY_CLASSES: Partial<Record<keyof Toggles, string>> = {
-  disableAnimations: "no-animations",
-  compactSidebar:    "compact-sidebar",
-  lowBandwidth:      "low-bandwidth",
+export const TOGGLE_META: Record<
+  keyof Toggles,
+  { label: string; description: string }
+> = {
+  disableAnimations: {
+    label:       "Disable Animations",
+    description: "Turns off all CSS animations and transitions for maximum performance.",
+  },
+  compactSidebar: {
+    label:       "Compact Sidebar",
+    description: "Collapses the sidebar to icon-only mode (48px). Labels appear as tooltips on hover.",
+  },
+  autoRefresh: {
+    label:       "Auto Refresh",
+    description: "API Health Monitor auto-pings all endpoints every 60 seconds while active.",
+  },
+  showUserIds: {
+    label:       "Show User IDs",
+    description: "Displays numeric Roblox user IDs alongside usernames throughout the app.",
+  },
+  lowBandwidth: {
+    label:       "Low Bandwidth Mode",
+    description: "Skips loading avatar and thumbnail images. Initials-based placeholders shown instead.",
+  },
 };
 
-/** Read toggles from localStorage, merging with defaults for any missing keys. */
+/**
+ * Read all toggle states from localStorage.
+ * Merges with defaults so new toggles are always defined.
+ * Safe to call on server (returns defaults).
+ */
 export function getToggles(): Toggles {
+  if (typeof window === "undefined") return { ...DEFAULT_TOGGLES };
   try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<Toggles>;
-      return { ...DEFAULTS, ...parsed };
-    }
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_TOGGLES };
+    return { ...DEFAULT_TOGGLES, ...JSON.parse(raw) };
   } catch {
-    // ignore
-  }
-  return { ...DEFAULTS };
-}
-
-/** Persist the full toggles object to localStorage. */
-function saveToggles(t: Toggles): void {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(t));
-  } catch {
-    // ignore
+    return { ...DEFAULT_TOGGLES };
   }
 }
 
 /**
- * Set a single toggle on or off.
- * Persists to localStorage and immediately applies/removes the body class.
- * Dispatches a "rblx:togglechange" CustomEvent so React components can react.
+ * Set a single toggle and persist to localStorage.
+ * Also applies side-effects (body class mutations) immediately.
  */
-export function setToggle(key: keyof Toggles, value: boolean): void {
+export function setToggle<K extends keyof Toggles>(key: K, value: Toggles[K]): void {
+  if (typeof window === "undefined") return;
   const current = getToggles();
-  const next    = { ...current, [key]: value };
-  saveToggles(next);
-
-  // Apply body class side-effect
-  const cls = BODY_CLASSES[key];
-  if (cls) {
-    document.body.classList.toggle(cls, value);
+  const next = { ...current, [key]: value };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // ignore write failures
   }
+  applySideEffects(key, value as boolean);
+}
 
-  // Notify listeners (Sidebar, etc.)
-  window.dispatchEvent(
-    new CustomEvent("rblx:togglechange", { detail: { key, value, toggles: next } })
+/**
+ * Replace the entire toggle state object.
+ * Useful when saving from the settings page.
+ */
+export function saveToggles(toggles: Toggles): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toggles));
+  } catch {
+    // ignore
+  }
+  // Re-apply all side effects
+  (Object.keys(toggles) as (keyof Toggles)[]).forEach((key) =>
+    applySideEffects(key, toggles[key] as boolean)
   );
 }
 
 /**
- * Flip a toggle (on → off, off → on).
- * Convenience wrapper around setToggle.
+ * Apply DOM side effects for a toggle change.
+ * Called automatically by setToggle and saveToggles.
  */
-export function flipToggle(key: keyof Toggles): boolean {
-  const current = getToggles();
-  const next    = !current[key];
-  setToggle(key, next);
-  return next;
-}
-
-/**
- * React hook — subscribe to toggle state with live updates.
- *
- * Usage:
- *   import { useToggle } from "@/lib/toggles";
- *   const showIds = useToggle("showUserIds");
- */
-export function useToggle(key: keyof Toggles): boolean {
-  // Lazy import React so this file stays importable in non-React contexts
-  // (e.g. middleware, API routes).
-  const { useState, useEffect } = require("react") as typeof import("react");
-
-  const [value, setValue] = useState<boolean>(() => {
-    if (typeof window === "undefined") return DEFAULTS[key];
-    return getToggles()[key];
-  });
-
-  useEffect(() => {
-    function handler(e: Event) {
-      const detail = (e as CustomEvent<{ key: keyof Toggles; value: boolean }>).detail;
-      if (detail.key === key) setValue(detail.value);
-    }
-    // Also handle the Sidebar collapse event emitted as "rblx:toggle"
-    function legacyHandler(e: Event) {
-      const toggleKey = (e as CustomEvent<keyof Toggles>).detail;
-      if (toggleKey === key) setValue(getToggles()[key]);
-    }
-    window.addEventListener("rblx:togglechange", handler);
-    window.addEventListener("rblx:toggle", legacyHandler);
-    return () => {
-      window.removeEventListener("rblx:togglechange", handler);
-      window.removeEventListener("rblx:toggle", legacyHandler);
-    };
-  }, [key]);
-
-  return value;
-}
-
-/**
- * React hook — get and set a toggle as a pair [value, setter].
- *
- * Usage:
- *   const [compact, setCompact] = useToggleState("compactSidebar");
- */
-export function useToggleState(
-  key: keyof Toggles
-): [boolean, (v: boolean) => void] {
-  const value = useToggle(key);
-  return [value, (v: boolean) => setToggle(key, v)];
+function applySideEffects(key: keyof Toggles, value: boolean): void {
+  switch (key) {
+    case "disableAnimations":
+      if (value) document.body.classList.add("no-animations");
+      else        document.body.classList.remove("no-animations");
+      break;
+    case "compactSidebar":
+      if (value) document.body.classList.add("compact-sidebar");
+      else        document.body.classList.remove("compact-sidebar");
+      break;
+    // autoRefresh, showUserIds, lowBandwidth have no immediate DOM side effects —
+    // they are read by the relevant hub/component at render time.
+    default:
+      break;
+  }
 }

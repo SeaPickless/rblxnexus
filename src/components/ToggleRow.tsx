@@ -1,53 +1,115 @@
-'use client';
+// src/components/ToggleRow.tsx
+// Toggle switch row for the Settings hub. Saves state to localStorage rn_toggles.
 
-import { LucideIcon } from 'lucide-react';
-import clsx from 'clsx';
+"use client";
+
+import { useState } from "react";
+import type { LucideIcon } from "lucide-react";
+import { setToggle, type Toggles } from "@/lib/toggles";
 
 interface ToggleRowProps {
-  icon: LucideIcon;
-  name: string;
+  icon:        LucideIcon;
+  name:        string;
   description: string;
-  value: boolean;
-  onChange: (value: boolean) => void;
+  toggleKey:   keyof Toggles;
+  value:       boolean;
+  onChange?:   (key: keyof Toggles, value: boolean) => void;
 }
 
-export default function ToggleRow({ icon: Icon, name, description, value, onChange }: ToggleRowProps) {
+export default function ToggleRow({
+  icon: Icon, name, description, toggleKey, value, onChange,
+}: ToggleRowProps) {
+  const [on, setOn] = useState(value);
+  const [hovered, setHovered] = useState(false);
+
+  function handleToggle() {
+    const next = !on;
+    setOn(next);
+    setToggle(toggleKey, next);
+    onChange?.(toggleKey, next);
+  }
+
   return (
     <div
-      className="flex items-center gap-4 p-4 rounded-xl"
-      style={{ background: 'var(--color-surface)' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display:      "flex",
+        alignItems:   "center",
+        gap:          16,
+        padding:      "16px 20px",
+        borderRadius: "8px",
+        background:   hovered ? "rgba(var(--color-accent-rgb),0.04)" : "var(--color-surface)",
+        border:       `1px solid ${hovered ? "rgba(var(--color-accent-rgb),0.25)" : "rgba(var(--color-accent-rgb),0.12)"}`,
+        transition:   "all 200ms ease",
+        cursor:       "pointer",
+      }}
+      onClick={handleToggle}
     >
       {/* Icon */}
-      <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-        style={{ background: 'var(--color-elevated)' }}
-      >
-        <Icon size={18} style={{ color: 'var(--color-accent)' }} />
+      <div style={{
+        width: 36, height: 36, flexShrink: 0,
+        borderRadius: "8px",
+        background: on ? "rgba(var(--color-accent-rgb),0.12)" : "var(--color-elevated)",
+        border: `1px solid ${on ? "rgba(var(--color-accent-rgb),0.4)" : "rgba(var(--color-accent-rgb),0.1)"}`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        transition: "all 200ms ease",
+        boxShadow: on ? "0 0 10px rgba(var(--color-accent-rgb),0.2)" : "none",
+      }}>
+        <Icon size={16} style={{ color: on ? "var(--color-accent)" : "var(--color-text-muted)", transition: "color 200ms ease" }} />
       </div>
 
       {/* Text */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-white">{name}</p>
-        <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{
+          fontFamily: "var(--font-rajdhani,'Rajdhani'),sans-serif",
+          fontSize: "14px", fontWeight: 600,
+          color: on ? "var(--color-text-primary)" : "var(--color-text-secondary)",
+          letterSpacing: "0.04em",
+          margin: 0, marginBottom: 2,
+          transition: "color 200ms ease",
+        }}>
+          {name}
+        </p>
+        <p style={{
+          fontSize: "12px",
+          color: "var(--color-text-muted)",
+          margin: 0,
+          lineHeight: 1.4,
+        }}>
+          {description}
+        </p>
       </div>
 
       {/* Toggle switch */}
-      <button
-        onClick={() => onChange(!value)}
-        className={clsx(
-          'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
-          value ? 'bg-[var(--color-accent)]' : 'bg-gray-600'
-        )}
-        aria-checked={value}
-        role="switch"
+      <div
+        style={{
+          width: 44, height: 24, flexShrink: 0,
+          borderRadius: "999px",
+          background: on
+            ? "var(--color-accent)"
+            : "rgba(var(--color-accent-rgb),0.15)",
+          boxShadow: on
+            ? "0 0 12px rgba(var(--color-accent-rgb),0.5), 0 0 24px rgba(var(--color-accent-rgb),0.2)"
+            : "none",
+          position: "relative",
+          transition: "all 250ms ease",
+          border: `1px solid ${on ? "var(--color-accent)" : "rgba(var(--color-accent-rgb),0.2)"}`,
+        }}
+        onClick={(e) => { e.stopPropagation(); handleToggle(); }}
       >
-        <span
-          className={clsx(
-            'absolute top-1 w-4 h-4 rounded-full bg-white transition-transform',
-            value ? 'translate-x-6' : 'translate-x-1'
-          )}
-        />
-      </button>
+        {/* Thumb */}
+        <div style={{
+          position: "absolute",
+          top: 2,
+          left: on ? "calc(100% - 20px - 2px)" : "2px",
+          width: 18, height: 18,
+          borderRadius: "50%",
+          background: on ? "#fff" : "rgba(var(--color-accent-rgb),0.5)",
+          boxShadow: on ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
+          transition: "left 250ms ease, background 250ms ease",
+        }} />
+      </div>
     </div>
   );
 }

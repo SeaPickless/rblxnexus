@@ -3,260 +3,443 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─────────────────────────────────────────────────────────────
-   THEME DEFINITIONS
-   Each theme sets CSS custom properties on html[data-theme="..."]
-   Fallback (no attribute) = nexus-dark
-   ───────────────────────────────────────────────────────────── */
-
-:root,
-html[data-theme="nexus-dark"] {
-  --base:      #0B0C0D;
-  --surface:   #16181A;
-  --elevated:  #1E2124;
-  --accent:    #A020F0;
-  --accent-muted: rgba(160, 32, 240, 0.15);
-  --text-primary:   #F0F0F0;
-  --text-secondary: #9CA3AF;
-  --border:    rgba(255,255,255,0.07);
-  --shadow:    0 4px 24px rgba(0,0,0,0.6);
+/* ── THEME TOKENS ─────────────────────────────────────────────────────────── */
+[data-theme="nexus-dark"], :root {
+  --color-base:           #0B0C0D;
+  --color-surface:        #16181A;
+  --color-elevated:       #1E2124;
+  --color-accent:         #A020F0;
+  --color-accent-rgb:     160,32,240;
+  --color-border:         rgba(160,32,240,0.2);
+  --color-border-hover:   rgba(160,32,240,0.6);
+  --color-text-primary:   #E8E8F0;
+  --color-text-secondary: #888899;
+  --color-text-muted:     #555566;
+  --color-scrollbar:      rgba(160,32,240,0.3);
+}
+[data-theme="midnight-blue"] {
+  --color-base:           #070B14;
+  --color-surface:        #0E1525;
+  --color-elevated:       #172035;
+  --color-accent:         #3B82F6;
+  --color-accent-rgb:     59,130,246;
+  --color-border:         rgba(59,130,246,0.2);
+  --color-border-hover:   rgba(59,130,246,0.6);
+  --color-text-primary:   #DCE8FF;
+  --color-text-secondary: #7A90B8;
+  --color-text-muted:     #445577;
+  --color-scrollbar:      rgba(59,130,246,0.3);
+}
+[data-theme="cyber-green"] {
+  --color-base:           #001000;
+  --color-surface:        #001A00;
+  --color-elevated:       #002000;
+  --color-accent:         #00FF41;
+  --color-accent-rgb:     0,255,65;
+  --color-border:         rgba(0,255,65,0.2);
+  --color-border-hover:   rgba(0,255,65,0.6);
+  --color-text-primary:   #CCFFCC;
+  --color-text-secondary: #44AA44;
+  --color-text-muted:     #226622;
+  --color-scrollbar:      rgba(0,255,65,0.3);
+}
+[data-theme="sunset-red"] {
+  --color-base:           #140808;
+  --color-surface:        #201010;
+  --color-elevated:       #2A1515;
+  --color-accent:         #EF4444;
+  --color-accent-rgb:     239,68,68;
+  --color-border:         rgba(239,68,68,0.2);
+  --color-border-hover:   rgba(239,68,68,0.6);
+  --color-text-primary:   #FFE0E0;
+  --color-text-secondary: #AA6666;
+  --color-text-muted:     #663333;
+  --color-scrollbar:      rgba(239,68,68,0.3);
+}
+[data-theme="oled-black"] {
+  --color-base:           #000000;
+  --color-surface:        #0A0A0A;
+  --color-elevated:       #111111;
+  --color-accent:         #A020F0;
+  --color-accent-rgb:     160,32,240;
+  --color-border:         rgba(160,32,240,0.18);
+  --color-border-hover:   rgba(160,32,240,0.55);
+  --color-text-primary:   #EFEFFF;
+  --color-text-secondary: #777788;
+  --color-text-muted:     #444455;
+  --color-scrollbar:      rgba(160,32,240,0.25);
+}
+[data-theme="light-mode"] {
+  --color-base:           #F5F5F5;
+  --color-surface:        #FFFFFF;
+  --color-elevated:       #EBEBEB;
+  --color-accent:         #7C3AED;
+  --color-accent-rgb:     124,58,237;
+  --color-border:         rgba(124,58,237,0.2);
+  --color-border-hover:   rgba(124,58,237,0.55);
+  --color-text-primary:   #111111;
+  --color-text-secondary: #555555;
+  --color-text-muted:     #999999;
+  --color-scrollbar:      rgba(124,58,237,0.25);
 }
 
-html[data-theme="midnight-blue"] {
-  --base:      #070B14;
-  --surface:   #0E1525;
-  --elevated:  #172035;
-  --accent:    #3B82F6;
-  --accent-muted: rgba(59, 130, 246, 0.15);
-  --text-primary:   #EFF6FF;
-  --text-secondary: #93C5FD;
-  --border:    rgba(59,130,246,0.12);
-  --shadow:    0 4px 24px rgba(0,0,0,0.7);
+/* ── LAYOUT TOKENS ────────────────────────────────────────────────────────── */
+:root {
+  --sidebar-width:         240px;
+  --sidebar-width-compact: 48px;
+  --topbar-height:         56px;
 }
+body.compact-sidebar { --sidebar-width: var(--sidebar-width-compact); }
 
-html[data-theme="cyber-green"] {
-  --base:      #001000;
-  --surface:   #001A00;
-  --elevated:  #002000;
-  --accent:    #00FF41;
-  --accent-muted: rgba(0, 255, 65, 0.10);
-  --text-primary:   #CCFFCC;
-  --text-secondary: #4AFF6A;
-  --border:    rgba(0,255,65,0.15);
-  --shadow:    0 4px 24px rgba(0,0,0,0.8);
-}
-
-html[data-theme="sunset-red"] {
-  --base:      #140808;
-  --surface:   #201010;
-  --elevated:  #2A1515;
-  --accent:    #EF4444;
-  --accent-muted: rgba(239, 68, 68, 0.15);
-  --text-primary:   #FEF2F2;
-  --text-secondary: #FCA5A5;
-  --border:    rgba(239,68,68,0.12);
-  --shadow:    0 4px 24px rgba(0,0,0,0.7);
-}
-
-html[data-theme="oled-black"] {
-  --base:      #000000;
-  --surface:   #0A0A0A;
-  --elevated:  #111111;
-  --accent:    #A020F0;
-  --accent-muted: rgba(160, 32, 240, 0.15);
-  --text-primary:   #FFFFFF;
-  --text-secondary: #A0A0A0;
-  --border:    rgba(255,255,255,0.06);
-  --shadow:    0 4px 24px rgba(0,0,0,0.9);
-}
-
-html[data-theme="light-mode"] {
-  --base:      #F5F5F5;
-  --surface:   #FFFFFF;
-  --elevated:  #EBEBEB;
-  --accent:    #7C3AED;
-  --accent-muted: rgba(124, 58, 237, 0.10);
-  --text-primary:   #111111;
-  --text-secondary: #555555;
-  --border:    rgba(0,0,0,0.08);
-  --shadow:    0 2px 12px rgba(0,0,0,0.08);
-}
-
-/* ─────────────────────────────────────────────────────────────
-   GLOBAL RESET + BASE
-   ───────────────────────────────────────────────────────────── */
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html {
-  scroll-behavior: smooth;
-  -webkit-text-size-adjust: 100%;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   BODY — rblx-body
-   ───────────────────────────────────────────────────────────── */
-
-.rblx-body {
-  background-color: var(--base);
-  color: var(--text-primary);
-  min-height: 100dvh;
-  font-feature-settings: "kern" 1, "liga" 1;
+/* ── BASE RESETS ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background-color: var(--color-base);
+  color: var(--color-text-primary);
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   APP SHELL — sidebar (fixed left) + main column
-   ───────────────────────────────────────────────────────────── */
+/* ── SCROLLBAR ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-base); }
+::-webkit-scrollbar-thumb { background: var(--color-scrollbar); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(var(--color-accent-rgb),0.5); }
 
-/* Sidebar width tokens — changed by compactSidebar toggle */
-:root {
-  --sidebar-w: 220px;
-  --topbar-h: 56px;
+/* ── FONT HELPERS ─────────────────────────────────────────────────────────── */
+.font-orbitron  { font-family: var(--font-orbitron), "Orbitron", sans-serif; }
+.font-rajdhani  { font-family: var(--font-rajdhani), "Rajdhani", sans-serif; }
+.font-mono-rblx { font-family: var(--font-mono), "JetBrains Mono", monospace; }
+
+/* ── GLOW UTILITIES ───────────────────────────────────────────────────────── */
+.glow-accent        { box-shadow: 0 0 12px rgba(var(--color-accent-rgb),0.35), 0 0 24px rgba(var(--color-accent-rgb),0.15); }
+.glow-accent-strong { box-shadow: 0 0 20px rgba(var(--color-accent-rgb),0.55), 0 0 40px rgba(var(--color-accent-rgb),0.25); }
+.glow-accent-text   { text-shadow: 0 0 8px rgba(var(--color-accent-rgb),0.6); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   SCI-FI ANIMATION SYSTEM — all 10 types
+══════════════════════════════════════════════════════════════════════════════ */
+
+/* 1. GLITCH TEXT ─────────────────────────────────────────────────────────── */
+@keyframes glitch-main {
+  0%,89%,100% { clip-path: none; transform: none; }
+  90% { clip-path: polygon(0 15%, 100% 15%, 100% 35%, 0 35%); transform: translateX(-4px); }
+  92% { clip-path: polygon(0 55%, 100% 55%, 100% 75%, 0 75%); transform: translateX(4px); }
+  94% { clip-path: polygon(0 35%, 100% 35%, 100% 55%, 0 55%); transform: translateX(-2px); }
+  96% { clip-path: none; transform: translateX(1px); }
+  98% { clip-path: polygon(0 70%, 100% 70%, 100% 90%, 0 90%); transform: translateX(-3px); }
+}
+@keyframes glitch-before {
+  0%,89%,100% { opacity: 0; }
+  90% { opacity: 0.7; transform: translateX(4px);  clip-path: polygon(0 10%, 100% 10%, 100% 30%, 0 30%); color: #ff00ff; }
+  92% { opacity: 0.5; transform: translateX(-4px); clip-path: polygon(0 60%, 100% 60%, 100% 80%, 0 80%); }
+  94% { opacity: 0.6; transform: translateX(3px);  clip-path: polygon(0 40%, 100% 40%, 100% 55%, 0 55%); }
+  96% { opacity: 0; }
+  98% { opacity: 0.4; transform: translateX(-2px); clip-path: polygon(0 65%, 100% 65%, 100% 85%, 0 85%); }
+}
+@keyframes glitch-after {
+  0%,89%,100% { opacity: 0; }
+  91% { opacity: 0.5; transform: translateX(-5px); clip-path: polygon(0 20%, 100% 20%, 100% 40%, 0 40%); color: #00ffff; }
+  93% { opacity: 0.6; transform: translateX(5px);  clip-path: polygon(0 50%, 100% 50%, 100% 70%, 0 70%); }
+  95% { opacity: 0.4; transform: translateX(-2px); clip-path: polygon(0 30%, 100% 30%, 100% 50%, 0 50%); }
+  97% { opacity: 0; }
+  99% { opacity: 0.5; transform: translateX(3px);  clip-path: polygon(0 75%, 100% 75%, 100% 90%, 0 90%); }
+}
+.glitch-text {
+  position: relative;
+  display: inline-block;
+  animation: glitch-main 7s ease-in-out infinite;
+}
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  color: var(--color-accent);
+  pointer-events: none;
+  font: inherit;
+}
+.glitch-text::before { animation: glitch-before 7s ease-in-out infinite; }
+.glitch-text::after  { animation: glitch-after  7s ease-in-out infinite 0.05s; }
+
+/* 2. NEON FLICKER ────────────────────────────────────────────────────────── */
+@keyframes neon-flicker {
+  0%,18%,20%,22%,52%,54%,64%,100% {
+    text-shadow:
+      0 0 4px #fff,
+      0 0 8px rgba(var(--color-accent-rgb),0.9),
+      0 0 16px rgba(var(--color-accent-rgb),0.7),
+      0 0 32px rgba(var(--color-accent-rgb),0.5);
+    opacity: 1;
+  }
+  19%,21%,53% { text-shadow: none; opacity: 0.6; }
+}
+@keyframes neon-flicker-box {
+  0%,18%,20%,22%,52%,54%,64%,100% {
+    box-shadow:
+      0 0 4px rgba(var(--color-accent-rgb),0.4),
+      0 0 12px rgba(var(--color-accent-rgb),0.3),
+      0 0 24px rgba(var(--color-accent-rgb),0.15),
+      inset 0 0 8px rgba(var(--color-accent-rgb),0.08);
+    border-color: var(--color-accent);
+    opacity: 1;
+  }
+  19%,21%,53% { box-shadow: none; opacity: 0.7; border-color: rgba(var(--color-accent-rgb),0.3); }
+}
+.neon-flicker     { animation: neon-flicker 9s ease-in-out infinite; }
+.neon-flicker-box { animation: neon-flicker-box 9s ease-in-out infinite; }
+
+/* 3. GLOW BREATHING ─────────────────────────────────────────────────────── */
+@keyframes glow-breathe {
+  0%,100% {
+    box-shadow: 0 0 6px rgba(var(--color-accent-rgb),0.25), 0 0 12px rgba(var(--color-accent-rgb),0.1);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(var(--color-accent-rgb),0.65), 0 0 36px rgba(var(--color-accent-rgb),0.3), 0 0 60px rgba(var(--color-accent-rgb),0.1);
+  }
+}
+@keyframes glow-breathe-text {
+  0%,100% { text-shadow: 0 0 6px rgba(var(--color-accent-rgb),0.4); }
+  50%      { text-shadow: 0 0 14px rgba(var(--color-accent-rgb),1), 0 0 28px rgba(var(--color-accent-rgb),0.6), 0 0 48px rgba(var(--color-accent-rgb),0.3); }
+}
+.glow-breathe      { animation: glow-breathe 3.5s ease-in-out infinite; }
+.glow-breathe-text { animation: glow-breathe-text 3.5s ease-in-out infinite; }
+
+/* 4. PULSE RINGS ─────────────────────────────────────────────────────────── */
+@keyframes pulse-ring-expand {
+  0%   { transform: scale(0.9); opacity: 0.7; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.pulse-ring-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.pulse-ring-wrap::before,
+.pulse-ring-wrap::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 1.5px solid rgba(var(--color-accent-rgb), 0.6);
+  animation: pulse-ring-expand 2.2s ease-out infinite;
+  pointer-events: none;
+}
+.pulse-ring-wrap::after { animation-delay: 1.1s; }
+
+/* 5. COUNTER / DATA STREAM ───────────────────────────────────────────────── */
+/* Applied via JS — CSS provides the flash frame on each tick */
+@keyframes counter-tick {
+  0%   { opacity: 0.2; transform: translateY(6px) scaleY(0.8); filter: blur(1px); }
+  40%  { opacity: 1;   transform: translateY(0)   scaleY(1);   filter: blur(0); }
+  100% { opacity: 1;   transform: translateY(0); }
+}
+.counter-tick { animation: counter-tick 120ms ease forwards; }
+
+@keyframes data-stream-char {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.2; content: "8"; }
 }
 
-.rblx-shell {
-  display: flex;
-  min-height: 100dvh;
+/* 6. PAGE TRANSITION — glitch wipe ──────────────────────────────────────── */
+@keyframes hub-enter {
+  0%   { opacity: 0; transform: translateY(10px) skewX(-0.8deg); filter: blur(3px); }
+  50%  { opacity: 1; transform: translateY(0)    skewX(0deg);    filter: blur(0); }
+  52%  { transform: translateX(3px) skewX(0.5deg); }
+  54%  { transform: translateX(-2px); }
+  56%  { transform: translateX(1px); }
+  100% { transform: translateX(0); opacity: 1; }
 }
+.hub-enter { animation: hub-enter 350ms ease forwards; }
 
-/* The main column sits to the right of the sidebar */
-.rblx-main-col {
-  flex: 1 1 0%;
-  min-width: 0;
-  margin-left: var(--sidebar-w);
-  display: flex;
-  flex-direction: column;
-  transition: margin-left 0.25s ease;
+/* 7. HOVER SCAN LINE ─────────────────────────────────────────────────────── */
+@keyframes scan-sweep {
+  0%   { left: -60%; opacity: 1; }
+  100% { left: 120%; opacity: 0.3; }
 }
-
-/* Page content below the topbar */
-.rblx-content {
-  flex: 1 1 auto;
-  padding: 24px 28px;
-  background-color: var(--base);
-}
-
-/* ─────────────────────────────────────────────────────────────
-   SIDEBAR ITSELF (width + transition)
-   ───────────────────────────────────────────────────────────── */
-
-.rblx-sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100dvh;
-  width: var(--sidebar-w);
-  background-color: var(--surface);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  z-index: 50;
-  transition: width 0.25s ease, transform 0.25s ease;
+.scan-line-host {
+  position: relative;
   overflow: hidden;
 }
-
-/* Compact sidebar via toggle class on body */
-body.compact-sidebar {
-  --sidebar-w: 48px;
+.scan-line-host .scan-line {
+  position: absolute;
+  top: 0; left: -60%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(var(--color-accent-rgb),0.06) 40%,
+    rgba(var(--color-accent-rgb),0.12) 50%,
+    rgba(var(--color-accent-rgb),0.06) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: none;
+}
+.scan-line-host:hover .scan-line {
+  animation: scan-sweep 0.55s ease forwards;
 }
 
-/* Mobile: sidebar hidden off-screen, toggled by hamburger */
-@media (max-width: 767px) {
-  :root { --sidebar-w: 0px; }
-
-  .rblx-sidebar {
-    width: 220px;
-    transform: translateX(-100%);
-  }
-
-  .rblx-sidebar.open {
-    transform: translateX(0);
-  }
-
-  .rblx-main-col {
-    margin-left: 0;
-  }
-}
-
-/* ─────────────────────────────────────────────────────────────
-   TOPBAR
-   ───────────────────────────────────────────────────────────── */
-
-.rblx-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  height: var(--topbar-h);
-  background-color: var(--surface);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  gap: 12px;
-}
-
-/* ─────────────────────────────────────────────────────────────
-   ACCENT UTILITIES
-   ───────────────────────────────────────────────────────────── */
-
-.text-accent       { color: var(--accent); }
-.bg-accent         { background-color: var(--accent); }
-.bg-accent-muted   { background-color: var(--accent-muted); }
-.border-accent     { border-color: var(--accent); }
-.ring-accent       { --tw-ring-color: var(--accent); }
-
-/* ─────────────────────────────────────────────────────────────
-   SURFACE / ELEVATED UTILITIES
-   ───────────────────────────────────────────────────────────── */
-
-.bg-surface    { background-color: var(--surface); }
-.bg-elevated   { background-color: var(--elevated); }
-.text-primary  { color: var(--text-primary); }
-.text-secondary{ color: var(--text-secondary); }
-.border-default{ border-color: var(--border); }
-
-/* ─────────────────────────────────────────────────────────────
-   CARD
-   ───────────────────────────────────────────────────────────── */
-
-.rblx-card {
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
+/* ── CARD with scan line built in ─────────────────────────────────────────── */
+.rn-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
   padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+.rn-card::after {
+  content: "";
+  position: absolute;
+  top: 0; left: -60%;
+  width: 55%;
+  height: 100%;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(var(--color-accent-rgb),0.05) 40%,
+    rgba(var(--color-accent-rgb),0.1) 50%,
+    rgba(var(--color-accent-rgb),0.05) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+  opacity: 0;
+}
+.rn-card:hover {
+  border-color: var(--color-border-hover);
+  box-shadow: 0 0 20px rgba(var(--color-accent-rgb),0.12);
+}
+.rn-card:hover::after {
+  animation: scan-sweep 0.55s ease forwards;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   SCROLLBAR STYLING
-   ───────────────────────────────────────────────────────────── */
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--elevated) transparent;
+/* 8. MATRIX GRID BACKGROUND ─────────────────────────────────────────────── */
+@keyframes grid-drift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
+}
+.matrix-grid {
+  background-image:
+    linear-gradient(rgba(var(--color-accent-rgb),0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--color-accent-rgb),0.035) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: grid-drift 12s linear infinite;
 }
 
-*::-webkit-scrollbar { width: 5px; height: 5px; }
-*::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb {
-  background-color: var(--elevated);
-  border-radius: 99px;
+/* 9. TYPEWRITER CURSOR ───────────────────────────────────────────────────── */
+@keyframes cursor-blink {
+  0%,49% { border-right-color: var(--color-accent); opacity: 1; }
+  50%,100% { border-right-color: transparent; opacity: 0.7; }
+}
+.typewriter-cursor {
+  border-right: 2px solid var(--color-accent);
+  padding-right: 3px;
+  animation: cursor-blink 0.85s step-end infinite;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   PERFORMANCE TOGGLE — no-animations
-   Applied to body by the toggle system (lib/toggles.ts)
-   ───────────────────────────────────────────────────────────── */
+/* 10. LOADING BAR ────────────────────────────────────────────────────────── */
+@keyframes shimmer-sweep {
+  0%   { transform: translateX(-200%); }
+  100% { transform: translateX(400%); }
+}
+@keyframes bar-glow {
+  0%,100% { box-shadow: 0 0 6px rgba(var(--color-accent-rgb),0.6); }
+  50%      { box-shadow: 0 0 18px rgba(var(--color-accent-rgb),1), 0 0 32px rgba(var(--color-accent-rgb),0.4); }
+}
+.loading-bar-track {
+  width: 100%; height: 4px;
+  background: rgba(var(--color-accent-rgb),0.12);
+  border-radius: 2px; overflow: hidden; position: relative;
+}
+.loading-bar-fill {
+  height: 100%; background: var(--color-accent);
+  border-radius: 2px; position: relative;
+  transition: width 600ms ease;
+  animation: bar-glow 1.5s ease-in-out infinite;
+}
+.loading-bar-fill::after {
+  content: ""; position: absolute; right: 0; top: 0;
+  width: 24px; height: 100%;
+  background: rgba(255,255,255,0.65);
+  filter: blur(3px); border-radius: 2px;
+}
+.loading-bar-indeterminate .loading-bar-fill {
+  width: 40% !important;
+  animation: shimmer-sweep 1.4s ease-in-out infinite, bar-glow 1.5s ease-in-out infinite;
+}
 
+/* ── SKELETON ─────────────────────────────────────────────────────────────── */
+@keyframes skeleton-pulse {
+  0%,100% { opacity: 0.35; }
+  50%      { opacity: 0.85; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--color-accent-rgb),0.06) 0%,
+    rgba(var(--color-accent-rgb),0.18) 50%,
+    rgba(var(--color-accent-rgb),0.06) 100%
+  );
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+/* ── BUTTONS ──────────────────────────────────────────────────────────────── */
+.rn-btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--color-elevated);
+  color: var(--color-accent);
+  border: 1.5px solid var(--color-accent);
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-family: var(--font-orbitron), sans-serif;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  cursor: pointer;
+  transition: box-shadow 200ms ease, transform 200ms ease;
+  box-shadow: 0 0 10px rgba(var(--color-accent-rgb),0.2);
+  position: relative; overflow: hidden;
+}
+.rn-btn-primary:hover {
+  box-shadow: 0 0 22px rgba(var(--color-accent-rgb),0.55), 0 0 44px rgba(var(--color-accent-rgb),0.2);
+  transform: scale(1.03);
+}
+.rn-btn-primary:active { transform: scale(0.98); }
+.rn-btn-primary:hover::after {
+  content: "";
+  position: absolute; top: 0; left: -60%;
+  width: 55%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  animation: scan-sweep 0.45s ease forwards;
+}
+
+.rn-btn-secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid rgba(var(--color-accent-rgb),0.3);
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-family: var(--font-orbitron), sans-serif;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  cursor: pointer;
+  transition: background 200ms ease, border-color 200ms ease, color 200ms ease, transform 200ms ease;
+}
+.rn-btn-secondary:hover {
+  background: rgba(var(--color-accent-rgb),0.1);
+  border-color: rgba(var(--color-accent-rgb),0.5);
+  color: var(--color-text-primary);
+  transform: scale(1.02);
+}
+.rn-btn-secondary:active { transform: scale(0.98); }
+
+/* ── PERFORMANCE: no-animations ───────────────────────────────────────────── */
 body.no-animations *,
 body.no-animations *::before,
 body.no-animations *::after {
@@ -264,17 +447,9 @@ body.no-animations *::after {
   transition: none !important;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   LOW BANDWIDTH — hide all img / next-image wrappers
-   Avatar placeholders replace them (see components)
-   ───────────────────────────────────────────────────────────── */
-
-body.low-bandwidth .rblx-avatar-img,
-body.low-bandwidth .rblx-thumb-img {
-  display: none !important;
-}
-
-body.low-bandwidth .rblx-avatar-fallback,
-body.low-bandwidth .rblx-thumb-fallback {
-  display: flex !important;
+/* ── FOCUS VISIBLE ────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }

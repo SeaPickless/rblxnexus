@@ -1,462 +1,358 @@
 "use client";
+// src/app/hub/social/page.tsx
+// HUB 1 — SOCIAL COMMANDER
+// Features: User Lookup · Friend Radar · Profile Compare
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Image from "next/image";
-import toast from "react-hot-toast";
 import {
-  Search, Medal, BarChart2, GitCompare, AlertTriangle,
-  Calendar, Trophy, Star, Filter
+  Search, Radar, GitCompare, Trophy, Users,
+  ExternalLink, ChevronDown, ChevronUp, AlertTriangle,
+  Calendar, UserCheck, UserPlus,
 } from "lucide-react";
+import LoadingBar   from "@/components/LoadingBar";
+import ErrorCard    from "@/components/ErrorCard";
+import UserCard     from "@/components/UserCard";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+interface UserSummary {
+  id: number; name: string; displayName: string;
+  description: string; created: string; isBanned: boolean;
+}
+interface CountSummary { friends: number|null; followers: number|null; following: number|null; }
+interface MutualUser   { id: number; name: string; displayName: string; avatarUrl?: string; }
 
-interface Badge {
-  id: number;
-  name: string;
-  description: string;
-  awardingUniverse?: { id: number; name: string };
-  imageUrl?: string;
-  awardedDate?: string; // ISO from earned-dates endpoint
+// ── Shared helpers ─────────────────────────────────────────────────────────────
+function HubTitle({ icon: Icon, title, sub }: { icon: React.ElementType; title: string; sub: string }) {
+  return (
+    <div className="mb-8">
+      <div className="flex items-center gap-3 mb-1">
+        <Icon size={22} style={{ color: "var(--color-accent)" }} />
+        <h1 style={{ fontFamily: "var(--font-orbitron,'Orbitron'),sans-serif", fontSize: "22px", fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--color-accent)", margin: 0, textShadow: "0 0 20px rgba(var(--color-accent-rgb),0.5)" }}>
+          {title}
+        </h1>
+      </div>
+      <p style={{ fontSize: "13px", color: "var(--color-text-muted)", letterSpacing: "0.06em", margin: 0 }}>{sub}</p>
+      <div style={{ height: 1, background: "rgba(var(--color-accent-rgb),0.2)", marginTop: 16 }} />
+    </div>
+  );
 }
 
-interface UserHeader {
-  id: number;
-  displayName: string;
-  username: string;
-  avatarUrl?: string;
+function SectionTitle({ title }: { title: string }) {
+  return (
+    <h2 style={{ fontFamily: "var(--font-orbitron,'Orbitron'),sans-serif", fontSize: "13px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--color-accent)", marginBottom: 16 }}>
+      {title}
+    </h2>
+  );
 }
 
-type SortMode = "recent" | "alpha" | "game";
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function fmtAwardDate(iso?: string) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short", day: "numeric", year: "numeric",
-  });
+function SearchInput({ value, onChange, placeholder, onEnter }: { value: string; onChange: (v: string) => void; placeholder: string; onEnter?: () => void }) {
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
+      placeholder={placeholder}
+      style={{
+        flex: 1, padding: "10px 14px", borderRadius: 6,
+        background: "var(--color-elevated)",
+        border: "1px solid rgba(var(--color-accent-rgb),0.3)",
+        color: "var(--color-text-primary)",
+        fontFamily: "var(--font-rajdhani,'Rajdhani'),sans-serif",
+        fontSize: "14px", outline: "none",
+        transition: "all 200ms ease",
+      }}
+      onFocus={(e) => { (e.target as HTMLInputElement).style.borderColor = "var(--color-accent)"; (e.target as HTMLInputElement).style.boxShadow = "0 0 0 3px rgba(var(--color-accent-rgb),0.15)"; }}
+      onBlur={(e)  => { (e.target as HTMLInputElement).style.borderColor = "rgba(var(--color-accent-rgb),0.3)"; (e.target as HTMLInputElement).style.boxShadow = "none"; }}
+    />
+  );
 }
 
-// ── API ───────────────────────────────────────────────────────────────────────
+function ActionBtn({ onClick, loading, children }: { onClick: () => void; loading?: boolean; children: React.ReactNode }) {
+  return (
+    <button onClick={onClick} disabled={loading} className="rn-btn-primary" style={{ opacity: loading ? 0.6 : 1, cursor: loading ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
+      {children}
+    </button>
+  );
+}
 
-async function resolveUser(username: string): Promise<UserHeader> {
-  const res = await fetch("/api/roblox/users/usernames", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ usernames: [username], excludeBannedUsers: false }),
-  });
-  if (!res.ok) throw new Error("User not found");
+function EmptyState({ icon: Icon, title, desc }: { icon: React.ElementType; title: string; desc: string }) {
+  return (
+    <div style={{ textAlign: "center", padding: "48px 24px" }}>
+      <Icon size={48} style={{ color: "rgba(var(--color-accent-rgb),0.3)", margin: "0 auto 16px" }} />
+      <p style={{ fontFamily: "var(--font-orbitron,'Orbitron'),sans-serif", fontSize: "14px", color: "var(--color-text-secondary)", marginBottom: 6 }}>{title}</p>
+      <p style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>{desc}</p>
+    </div>
+  );
+}
+
+// ── Fetch helpers ─────────────────────────────────────────────────────────────
+async function resolveUser(username: string): Promise<{ id: number; name: string; displayName: string }> {
+  const res = await fetch(`/api/proxy/user?username=${encodeURIComponent(username)}`);
   const data = await res.json();
-  const entry = data.data?.[0];
-  if (!entry) throw new Error("User not found");
-
-  const infoRes = await fetch(`/api/roblox/users/${entry.id}`);
-  const info = infoRes.ok ? await infoRes.json() : { id: entry.id, name: entry.name, displayName: entry.displayName };
-
-  let avatarUrl: string | undefined;
-  try {
-    const avRes = await fetch(`/api/roblox/thumbnails/users?userIds=${entry.id}&size=150x150&format=Png`);
-    if (avRes.ok) {
-      const avData = await avRes.json();
-      avatarUrl = avData.data?.[0]?.imageUrl;
-    }
-  } catch { /* non-fatal */ }
-
-  return { id: info.id, displayName: info.displayName, username: info.name, avatarUrl };
+  if (data.error) throw new Error(data.message);
+  return data;
 }
 
-async function fetchBadges(userId: number): Promise<Badge[]> {
-  const all: Badge[] = [];
-  let cursor = "";
-  // Paginate up to 500 badges
-  for (let page = 0; page < 10; page++) {
-    const params = new URLSearchParams({ limit: "50" });
-    if (cursor) params.set("cursor", cursor);
-    const res = await fetch(`/api/roblox/badges/user/${userId}?${params}`);
-    if (!res.ok) break;
-    const data = await res.json();
-    all.push(...(data.data ?? []));
-    cursor = data.nextPageCursor ?? "";
-    if (!cursor) break;
-  }
-
-  // Fetch badge thumbnails in one call (max 100 ids)
-  if (all.length > 0) {
-    const chunk = all.slice(0, 100).map((b) => b.id).join(",");
-    try {
-      const tRes = await fetch(`/api/roblox/thumbnails/badges?badgeIds=${chunk}&size=150x150&format=Png`);
-      if (tRes.ok) {
-        const tData = await tRes.json();
-        const map: Record<number, string> = {};
-        (tData.data ?? []).forEach((t: { targetId: number; imageUrl: string }) => { map[t.targetId] = t.imageUrl; });
-        all.forEach((b) => { b.imageUrl = map[b.id] ?? b.imageUrl; });
-      }
-    } catch { /* non-fatal */ }
-  }
-
-  // Fetch awarded dates for the first 100
-  if (all.length > 0) {
-    const chunk = all.slice(0, 100).map((b) => b.id).join(",");
-    try {
-      const dRes = await fetch(`/api/roblox/badges/user/${userId}/awarded?badgeIds=${chunk}`);
-      if (dRes.ok) {
-        const dData = await dRes.json();
-        const map: Record<number, string> = {};
-        (dData.data ?? []).forEach((d: { badgeId: number; awardedDate: string }) => { map[d.badgeId] = d.awardedDate; });
-        all.forEach((b) => { b.awardedDate = map[b.id] ?? b.awardedDate; });
-      }
-    } catch { /* non-fatal */ }
-  }
-
-  return all;
+async function fetchUserFull(userId: number) {
+  const [infoRes, countsRes, thumbRes, presRes] = await Promise.all([
+    fetch(`/api/proxy/userinfo?userId=${userId}`),
+    fetch(`/api/proxy/counts?userId=${userId}`),
+    fetch(`/api/proxy/thumbnail?userId=${userId}&size=420x420`),
+    fetch(`/api/proxy/presence?userIds=${userId}`),
+  ]);
+  const [info, counts, thumb, pres] = await Promise.all([
+    infoRes.json(), countsRes.json(), thumbRes.json(), presRes.json(),
+  ]);
+  if (info.error) throw new Error(info.message);
+  return { info, counts, thumb, presence: Array.isArray(pres) ? pres[0] : null };
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-white/5 ${className ?? ""}`} />;
-}
-
-function ErrorCard({ message, onRetry }: { message: string; onRetry?: () => void }) {
-  return (
-    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 flex items-center gap-3">
-      <AlertTriangle className="shrink-0 text-red-400" size={18} />
-      <span className="text-sm text-red-300 flex-1">{message}</span>
-      {onRetry && <button onClick={onRetry} className="text-xs text-red-400 hover:text-red-200 underline">Retry</button>}
-    </div>
-  );
-}
-
-function BadgeCard({ badge }: { badge: Badge }) {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div
-      className="relative rounded-xl border border-white/10 bg-white/5 p-2 flex flex-col items-center gap-1 text-center group cursor-default"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {badge.imageUrl ? (
-        <Image src={badge.imageUrl} alt={badge.name} width={60} height={60} className="rounded-lg object-cover" />
-      ) : (
-        <div className="w-15 h-15 rounded-lg bg-white/10 flex items-center justify-center">
-          <Medal size={24} className="text-white/20" />
-        </div>
-      )}
-      <p className="text-xs text-white font-medium line-clamp-2 leading-tight">{badge.name}</p>
-      <p className="text-xs text-white/30 truncate w-full">{badge.awardingUniverse?.name ?? "—"}</p>
-      <p className="text-xs text-indigo-400">{fmtAwardDate(badge.awardedDate)}</p>
-
-      {/* Tooltip */}
-      {hovered && badge.description && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-10 w-48 rounded-xl bg-gray-900 border border-white/20 p-2 shadow-xl text-xs text-white/70 text-left pointer-events-none">
-          {badge.description}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BadgeStats({ badges }: { badges: Badge[] }) {
-  const stats = useMemo(() => {
-    if (badges.length === 0) return null;
-    const games: Record<string, { name: string; count: number }> = {};
-    badges.forEach((b) => {
-      const gName = b.awardingUniverse?.name ?? "Unknown";
-      if (!games[gName]) games[gName] = { name: gName, count: 0 };
-      games[gName].count++;
-    });
-    const topGame = Object.values(games).sort((a, b) => b.count - a.count)[0];
-    const uniqueGames = Object.keys(games).length;
-
-    const withDate = badges.filter((b) => b.awardedDate);
-    const sorted = [...withDate].sort(
-      (a, b) => new Date(a.awardedDate!).getTime() - new Date(b.awardedDate!).getTime()
-    );
-    const oldest = sorted[0];
-    const newest = sorted[sorted.length - 1];
-
-    return { total: badges.length, uniqueGames, topGame, oldest, newest };
-  }, [badges]);
-
-  if (!stats) return null;
-
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-      {[
-        { icon: <Trophy size={14} className="text-yellow-400" />, label: "Total Badges", value: stats.total.toLocaleString() },
-        { icon: <Star size={14} className="text-indigo-400" />, label: "Unique Games", value: stats.uniqueGames.toLocaleString() },
-        { icon: <BarChart2 size={14} className="text-green-400" />, label: "Top Game", value: `${stats.topGame?.name ?? "—"} (${stats.topGame?.count ?? 0})` },
-        { icon: <Calendar size={14} className="text-white/40" />, label: "Oldest Badge", value: stats.oldest ? `${stats.oldest.name} · ${fmtAwardDate(stats.oldest.awardedDate)}` : "—" },
-        { icon: <Calendar size={14} className="text-white/40" />, label: "Newest Badge", value: stats.newest ? `${stats.newest.name} · ${fmtAwardDate(stats.newest.awardedDate)}` : "—" },
-      ].map(({ icon, label, value }) => (
-        <div key={label} className="rounded-xl border border-white/10 bg-white/5 p-3">
-          <div className="flex items-center gap-1.5 mb-1">{icon}<span className="text-xs text-white/40">{label}</span></div>
-          <p className="text-sm font-semibold text-white truncate">{value}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Tab: Collection ───────────────────────────────────────────────────────────
-
-function CollectionTab() {
-  const [query, setQuery] = useState("");
+// ── FEATURE 1: User Lookup ────────────────────────────────────────────────────
+function UserLookup() {
+  const [query,   setQuery]   = useState("");
+  const [userId,  setUserId]  = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<UserHeader | null>(null);
-  const [badges, setBadges] = useState<Badge[]>([]);
-  const [sort, setSort] = useState<SortMode>("recent");
-  const [gameFilter, setGameFilter] = useState("");
+  const [error,   setError]   = useState<string | null>(null);
 
   async function handleSearch() {
-    const q = query.trim();
-    if (!q) return;
-    setLoading(true);
-    setError(null);
-    setUser(null);
-    setBadges([]);
+    if (!query.trim()) return;
+    setLoading(true); setError(null); setUserId(null);
     try {
-      const u = await resolveUser(q);
-      const b = await fetchBadges(u.id);
-      setUser(u);
-      setBadges(b);
+      const u = await resolveUser(query.trim());
+      setUserId(u.id);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed";
-      setError(msg);
-      toast.error(msg);
+      setError(e instanceof Error ? e.message : "User not found.");
     } finally {
       setLoading(false);
     }
   }
 
-  const filtered = useMemo(() => {
-    let b = [...badges];
-    if (gameFilter) b = b.filter((x) => (x.awardingUniverse?.name ?? "").toLowerCase().includes(gameFilter.toLowerCase()));
-    if (sort === "recent") b.sort((a, z) => new Date(z.awardedDate ?? 0).getTime() - new Date(a.awardedDate ?? 0).getTime());
-    if (sort === "alpha") b.sort((a, z) => a.name.localeCompare(z.name));
-    if (sort === "game") b.sort((a, z) => (a.awardingUniverse?.name ?? "").localeCompare(z.awardingUniverse?.name ?? ""));
-    return b;
-  }, [badges, sort, gameFilter]);
-
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2">
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          placeholder="Enter Roblox username…"
-          className="flex-1 rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500"
-        />
-        <button
-          onClick={handleSearch}
-          disabled={loading}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors"
-        >
-          <Search size={16} className="text-white" />
-        </button>
+    <div className="rn-card mb-6">
+      <SectionTitle title="User Lookup" />
+      <div className="flex gap-3 mb-4 flex-wrap">
+        <SearchInput value={query} onChange={setQuery} placeholder="Enter Roblox username…" onEnter={handleSearch} />
+        <ActionBtn onClick={handleSearch} loading={loading}><Search size={14} /> Search</ActionBtn>
       </div>
-
-      {error && <ErrorCard message={error} onRetry={handleSearch} />}
-
-      {loading && (
-        <div className="space-y-3">
-          <Skeleton className="h-20" />
-          <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-            {Array.from({ length: 12 }).map((_, i) => <Skeleton key={i} className="aspect-square" />)}
-          </div>
-        </div>
-      )}
-
-      {user && !loading && (
-        <>
-          {/* User header */}
-          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-            {user.avatarUrl ? (
-              <Image src={user.avatarUrl} alt={user.displayName} width={48} height={48} className="rounded-xl object-cover" />
-            ) : (
-              <div className="w-12 h-12 rounded-xl bg-white/10" />
-            )}
-            <div>
-              <p className="font-bold text-white">{user.displayName}</p>
-              <p className="text-xs text-white/40">@{user.username} · {badges.length.toLocaleString()} badges</p>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <BadgeStats badges={badges} />
-
-          {/* Controls */}
-          <div className="flex gap-2 flex-wrap">
-            <div className="flex items-center gap-1 rounded-xl bg-white/5 border border-white/10 px-3 py-1.5">
-              <Filter size={12} className="text-white/30" />
-              <input
-                value={gameFilter}
-                onChange={(e) => setGameFilter(e.target.value)}
-                placeholder="Filter by game…"
-                className="bg-transparent text-sm text-white placeholder-white/30 focus:outline-none w-32"
-              />
-            </div>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortMode)}
-              className="rounded-xl bg-white/5 border border-white/10 px-3 py-1.5 text-sm text-white focus:outline-none"
-            >
-              <option value="recent">Most Recent</option>
-              <option value="alpha">Alphabetical</option>
-              <option value="game">By Game</option>
-            </select>
-            <span className="ml-auto text-xs text-white/30 self-center">{filtered.length} badges</span>
-          </div>
-
-          {/* Grid */}
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-            {filtered.map((b) => <BadgeCard key={b.id} badge={b} />)}
-          </div>
-
-          {filtered.length === 0 && (
-            <p className="text-center text-sm text-white/30 py-6">No badges match your filter.</p>
-          )}
-        </>
-      )}
+      {loading && <LoadingBar estimatedSeconds={2} />}
+      {error   && <ErrorCard message={error} onRetry={handleSearch} />}
+      {userId !== null && !loading && <UserCard userId={userId} />}
+      {!userId && !loading && !error && <EmptyState icon={Search} title="Search a player" desc="Enter a Roblox username to pull their full profile." />}
     </div>
   );
 }
 
-// ── Tab: Compare ──────────────────────────────────────────────────────────────
+// ── FEATURE 2: Friend Radar ───────────────────────────────────────────────────
+function FriendRadar() {
+  const [query,    setQuery]    = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
+  const [mutuals,  setMutuals]  = useState<MutualUser[] | null>(null);
+  const [hop,      setHop]      = useState<number | null>(null);
+  const [targetId, setTargetId] = useState<number | null>(null);
+  const [lookupId, setLookupId] = useState<number | null>(null);
 
-function CompareTab() {
-  const [nameA, setNameA] = useState("");
-  const [nameB, setNameB] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{
-    userA: UserHeader; userB: UserHeader;
-    onlyA: Badge[]; shared: Badge[]; onlyB: Badge[];
-  } | null>(null);
-
-  async function handleCompare() {
-    if (!nameA.trim() || !nameB.trim()) return;
-    setLoading(true);
-    setError(null);
-    setResult(null);
+  async function handleScan() {
+    if (!query.trim()) return;
+    setLoading(true); setError(null); setMutuals(null); setHop(null);
     try {
-      const [uA, uB] = await Promise.all([resolveUser(nameA.trim()), resolveUser(nameB.trim())]);
-      const [bA, bB] = await Promise.all([fetchBadges(uA.id), fetchBadges(uB.id)]);
-      const idsB = new Set(bB.map((b) => b.id));
-      const idsA = new Set(bA.map((b) => b.id));
-      const onlyA = bA.filter((b) => !idsB.has(b.id));
-      const shared = bA.filter((b) => idsB.has(b.id));
-      const onlyB = bB.filter((b) => !idsA.has(b.id));
-      setResult({ userA: uA, userB: uB, onlyA, shared, onlyB });
+      // Resolve target
+      const target = await resolveUser(query.trim());
+      setTargetId(target.id);
+
+      // Get signed-in user's Roblox session
+      const meRes  = await fetch("/api/auth/roblox/userinfo");
+      const meData = await meRes.json();
+      if (!meData.connected) throw new Error("Connect your Roblox account first.");
+
+      const myId = Number(meData.robloxId);
+
+      // Fetch mutuals server-side
+      const mutRes  = await fetch(`/api/proxy/mutuals?myId=${myId}&targetId=${target.id}`);
+      const mutData = await mutRes.json();
+      if (mutData.error) throw new Error(mutData.message);
+
+      // Determine hop distance
+      const isFriend = mutData.mutuals?.some((m: { id: number }) => m.id === target.id);
+      setHop(isFriend ? 1 : mutData.count > 0 ? 2 : 3);
+
+      // Fetch avatars for mutuals (up to 20)
+      const top20: MutualUser[] = (mutData.mutuals ?? []).slice(0, 20);
+      const thumbPromises = top20.map(async (m: MutualUser) => {
+        try {
+          const r = await fetch(`/api/proxy/thumbnail?userId=${m.id}&size=100x100`);
+          const d = await r.json();
+          return { ...m, avatarUrl: d.imageUrl ?? null };
+        } catch { return m; }
+      });
+      setMutuals(await Promise.all(thumbPromises));
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Compare failed";
-      setError(msg);
-      toast.error(msg);
+      setError(e instanceof Error ? e.message : "Scan failed.");
     } finally {
       setLoading(false);
     }
   }
 
+  const hopLabel = hop === 1 ? "Direct Friend" : hop === 2 ? "Friend-of-Friend" : "Extended Network";
+  const hopColor = hop === 1 ? "#22c55e" : hop === 2 ? "var(--color-accent)" : "var(--color-text-muted)";
+
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-2">
-        <input value={nameA} onChange={(e) => setNameA(e.target.value)} placeholder="User A" className="rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500" />
-        <input value={nameB} onChange={(e) => setNameB(e.target.value)} placeholder="User B" className="rounded-xl bg-white/5 border border-white/10 px-3 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-indigo-500" />
+    <div className="rn-card mb-6">
+      <SectionTitle title="Friend Radar" />
+      <div className="flex gap-3 mb-4 flex-wrap">
+        <SearchInput value={query} onChange={setQuery} placeholder="Target Roblox username…" onEnter={handleScan} />
+        <ActionBtn onClick={handleScan} loading={loading}><Radar size={14} /> Scan</ActionBtn>
       </div>
-      <button onClick={handleCompare} disabled={loading} className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2">
-        <GitCompare size={14} /> {loading ? "Comparing…" : "Compare Badge Collections"}
-      </button>
-
-      {error && <ErrorCard message={error} onRetry={handleCompare} />}
-
-      {result && (
-        <div className="space-y-4">
-          {/* User cards */}
-          <div className="grid grid-cols-2 gap-2">
-            {([result.userA, result.userB] as UserHeader[]).map((u) => (
-              <div key={u.id} className="rounded-xl border border-white/10 bg-white/5 p-3 flex items-center gap-2">
-                {u.avatarUrl ? (
-                  <Image src={u.avatarUrl} alt={u.displayName} width={36} height={36} className="rounded-lg object-cover" />
-                ) : (
-                  <div className="w-9 h-9 rounded-lg bg-white/10" />
-                )}
-                <div>
-                  <p className="text-sm font-bold text-white">{u.displayName}</p>
-                  <p className="text-xs text-white/40">@{u.username}</p>
-                </div>
+      {loading  && <LoadingBar estimatedSeconds={4} />}
+      {error    && <ErrorCard message={error} onRetry={handleScan} />}
+      {!loading && mutuals !== null && (
+        <div>
+          {/* Hop badge */}
+          {hop !== null && (
+            <div className="flex items-center gap-3 mb-4 p-3 rounded-md" style={{ background: "rgba(var(--color-accent-rgb),0.04)", border: "1px solid rgba(var(--color-accent-rgb),0.12)" }}>
+              <span style={{ fontFamily: "var(--font-mono,'JetBrains Mono'),monospace", fontSize: "28px", fontWeight: 700, color: hopColor }}>{hop}</span>
+              <div>
+                <p style={{ fontFamily: "var(--font-orbitron,'Orbitron'),sans-serif", fontSize: "12px", color: hopColor, margin: 0, letterSpacing: "0.08em" }}>{hopLabel}</p>
+                <p style={{ fontSize: "11px", color: "var(--color-text-muted)", margin: 0 }}>{mutuals.length} mutual friend{mutuals.length !== 1 ? "s" : ""}</p>
               </div>
-            ))}
+            </div>
+          )}
+          {/* Mutuals grid */}
+          {mutuals.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {mutuals.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => setLookupId(m.id)}
+                  title={m.displayName}
+                  style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                >
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", overflow: "hidden", border: "2px solid rgba(var(--color-accent-rgb),0.4)", boxShadow: "0 0 6px rgba(var(--color-accent-rgb),0.3)", background: "var(--color-elevated)", position: "relative" }}>
+                    {m.avatarUrl
+                      ? <Image src={m.avatarUrl} alt={m.displayName} fill sizes="40px" style={{ objectFit: "cover" }} />
+                      : <span style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: 700, color: "var(--color-accent)" }}>{m.displayName.charAt(0)}</span>}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={Users} title="No mutual friends" desc="You and this user share no mutual friends." />
+          )}
+          {/* Inline user lookup on click */}
+          {lookupId && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <span style={{ fontSize: "11px", color: "var(--color-text-muted)", letterSpacing: "0.06em" }}>QUICK PROFILE</span>
+                <button onClick={() => setLookupId(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-muted)", fontSize: "11px" }}>✕ Close</button>
+              </div>
+              <UserCard userId={lookupId} />
+            </div>
+          )}
+        </div>
+      )}
+      {!loading && mutuals === null && !error && <EmptyState icon={Radar} title="Scan a player's network" desc="See how closely connected you are to any Roblox user." />}
+    </div>
+  );
+}
+
+// ── FEATURE 3: Profile Compare ────────────────────────────────────────────────
+interface CompareUser { info: UserSummary; counts: CountSummary; avatarUrl: string | null; }
+
+function ProfileCompare() {
+  const [usernameA, setUsernameA] = useState("");
+  const [usernameB, setUsernameB] = useState("");
+  const [loading,   setLoading]   = useState(false);
+  const [error,     setError]     = useState<string | null>(null);
+  const [userA,     setUserA]     = useState<CompareUser | null>(null);
+  const [userB,     setUserB]     = useState<CompareUser | null>(null);
+
+  async function handleCompare() {
+    if (!usernameA.trim() || !usernameB.trim()) return;
+    setLoading(true); setError(null); setUserA(null); setUserB(null);
+    try {
+      const [a, b] = await Promise.all([
+        resolveUser(usernameA.trim()),
+        resolveUser(usernameB.trim()),
+      ]);
+      const [dataA, dataB] = await Promise.all([
+        fetchUserFull(a.id),
+        fetchUserFull(b.id),
+      ]);
+      setUserA({ info: dataA.info, counts: dataA.counts, avatarUrl: dataA.thumb?.imageUrl ?? null });
+      setUserB({ info: dataB.info, counts: dataB.counts, avatarUrl: dataB.thumb?.imageUrl ?? null });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Compare failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function Winner({ valA, valB, label }: { valA: number | null; valB: number | null; label: string }) {
+    const winA = valA !== null && valB !== null && valA > valB;
+    const winB = valA !== null && valB !== null && valB > valA;
+    return (
+      <div className="flex items-center" style={{ borderBottom: "1px solid rgba(var(--color-accent-rgb),0.08)", padding: "10px 0" }}>
+        <div style={{ flex: 1, textAlign: "right" }}>
+          <span style={{ fontFamily: "var(--font-mono,'JetBrains Mono'),monospace", fontSize: "15px", color: winA ? "var(--color-accent)" : "var(--color-text-secondary)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
+            {winA && <Trophy size={12} style={{ color: "var(--color-accent)" }} />}
+            {valA?.toLocaleString() ?? "—"}
+          </span>
+        </div>
+        <div style={{ width: 100, textAlign: "center", fontSize: "10px", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--color-text-muted)" }}>{label}</div>
+        <div style={{ flex: 1 }}>
+          <span style={{ fontFamily: "var(--font-mono,'JetBrains Mono'),monospace", fontSize: "15px", color: winB ? "var(--color-accent)" : "var(--color-text-secondary)", display: "flex", alignItems: "center", gap: 4 }}>
+            {valB?.toLocaleString() ?? "—"}
+            {winB && <Trophy size={12} style={{ color: "var(--color-accent)" }} />}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  const ageA = userA ? Math.floor((Date.now() - new Date(userA.info.created).getTime()) / 86400000) : null;
+  const ageB = userB ? Math.floor((Date.now() - new Date(userB.info.created).getTime()) / 86400000) : null;
+
+  return (
+    <div className="rn-card">
+      <SectionTitle title="Profile Compare" />
+      <div className="flex gap-3 mb-4 flex-wrap items-center">
+        <SearchInput value={usernameA} onChange={setUsernameA} placeholder="Username A…" onEnter={handleCompare} />
+        <span style={{ fontFamily: "var(--font-orbitron,'Orbitron'),sans-serif", fontSize: "13px", fontWeight: 900, color: "var(--color-accent)", textShadow: "0 0 12px rgba(var(--color-accent-rgb),0.6)", flexShrink: 0 }}>VS</span>
+        <SearchInput value={usernameB} onChange={setUsernameB} placeholder="Username B…" onEnter={handleCompare} />
+        <ActionBtn onClick={handleCompare} loading={loading}><GitCompare size={14} /> Compare</ActionBtn>
+      </div>
+      {loading && <LoadingBar estimatedSeconds={3} />}
+      {error   && <ErrorCard message={error} onRetry={handleCompare} />}
+      {userA && userB && !loading && (
+        <div className="mt-4">
+          {/* Side-by-side user cards */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <UserCard userId={userA.info.id} />
+            <UserCard userId={userB.info.id} />
           </div>
-
-          {/* 3-column layout */}
-          <div className="grid grid-cols-3 gap-2 text-center">
-            {[
-              { label: "Only A", count: result.onlyA.length, color: "text-red-400", badges: result.onlyA },
-              { label: "Both", count: result.shared.length, color: "text-indigo-400", badges: result.shared },
-              { label: "Only B", count: result.onlyB.length, color: "text-green-400", badges: result.onlyB },
-            ].map(({ label, count, color, badges }) => (
-              <div key={label} className="rounded-xl border border-white/10 bg-white/5 p-2 space-y-2">
-                <p className={`text-sm font-bold ${color}`}>{label}</p>
-                <p className="text-xs text-white/40">{count}</p>
-                <div className="grid grid-cols-2 gap-1">
-                  {badges.slice(0, 8).map((b) => (
-                    <div key={b.id} title={b.name}>
-                      {b.imageUrl ? (
-                        <Image src={b.imageUrl} alt={b.name} width={40} height={40} className="rounded-lg object-cover" />
-                      ) : (
-                        <div className="w-10 h-10 rounded-lg bg-white/10" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {badges.length > 8 && (
-                  <p className="text-xs text-white/30">+{badges.length - 8} more</p>
-                )}
-              </div>
-            ))}
+          {/* Comparison rows */}
+          <div style={{ background: "rgba(var(--color-accent-rgb),0.03)", border: "1px solid rgba(var(--color-accent-rgb),0.1)", borderRadius: 8, padding: "8px 16px" }}>
+            <Winner valA={userA.counts.friends}   valB={userB.counts.friends}   label="Friends" />
+            <Winner valA={userA.counts.followers} valB={userB.counts.followers} label="Followers" />
+            <Winner valA={userA.counts.following} valB={userB.counts.following} label="Following" />
+            <Winner valA={ageA}                   valB={ageB}                   label="Acct Age (days)" />
           </div>
         </div>
       )}
+      {!userA && !loading && !error && <EmptyState icon={GitCompare} title="Compare two players" desc="Enter two usernames to compare their stats side by side." />}
     </div>
   );
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-
-const TABS = [
-  { id: "collection", label: "Collection", icon: Medal },
-  { id: "compare", label: "Compare", icon: GitCompare },
-];
-
-export default function BadgeVaultPage() {
-  const [tab, setTab] = useState("collection");
-
+export default function SocialCommanderPage() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Badge Vault</h1>
-        <p className="text-sm text-white/40">Browse, analyse, and compare Roblox badge collections.</p>
-      </div>
-
-      <div className="flex gap-1 rounded-xl bg-white/5 p-1 border border-white/10">
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium transition-colors ${
-              tab === id ? "bg-indigo-600 text-white" : "text-white/50 hover:text-white/80"
-            }`}
-          >
-            <Icon size={13} /> {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "collection" && <CollectionTab />}
-      {tab === "compare" && <CompareTab />}
+    <div className="hub-enter p-6 max-w-4xl mx-auto">
+      <HubTitle icon={Users} title="Social Commander" sub="Look up players, scan friend networks, and compare profiles." />
+      <UserLookup />
+      <FriendRadar />
+      <ProfileCompare />
     </div>
   );
 }

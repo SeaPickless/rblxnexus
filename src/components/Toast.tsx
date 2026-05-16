@@ -1,96 +1,99 @@
-"use client";
-
 // src/components/Toast.tsx
-// Thin wrapper around react-hot-toast that applies RblxNexus theme variables.
-// Drop this once into layout.tsx — no other setup needed.
-// Usage anywhere in the app:
-//   import toast from "react-hot-toast";
-//   toast.success("Done!") / toast.error("Failed") / toast("Info")
+// Sci-fi animations applied:
+//  ✓ Neon flicker — toast border briefly flickers on appear
+//  ✓ Glow breathe — success/error glow pulses while toast is visible
 
-import { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { CheckCircle, XCircle, AlertTriangle, Info, Loader2 } from "lucide-react";
+import React from "react";
 
-export function Toast() {
-  return (
-    <Toaster
-      position="top-right"
-      reverseOrder={false}
-      gutter={8}
-      toastOptions={{
-        // Default auto-dismiss: 3 seconds
-        duration: 3000,
+function baseStyle(extraBorder?: string, extraShadow?: string): React.CSSProperties {
+  return {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    background: "var(--color-elevated)",
+    color: "var(--color-text-primary)",
+    border: extraBorder ?? "1px solid rgba(var(--color-accent-rgb),0.5)",
+    borderRadius: "6px",
+    fontFamily: "var(--font-rajdhani),sans-serif",
+    fontSize: "14px",
+    letterSpacing: "0.04em",
+    padding: "10px 14px",
+    boxShadow: extraShadow ?? "0 0 16px rgba(var(--color-accent-rgb),0.25), 0 0 32px rgba(var(--color-accent-rgb),0.08)",
+    maxWidth: "360px",
+    animation: "neon-flicker-box 6s ease-in-out 1",
+  };
+}
 
-        // Base styles applied to every toast
-        style: {
-          background:  "var(--elevated)",
-          color:       "var(--text-primary)",
-          border:      "1px solid var(--border)",
-          borderRadius:"10px",
-          fontSize:    "13.5px",
-          fontWeight:  "500",
-          boxShadow:   "var(--shadow)",
-          padding:     "10px 14px",
-          maxWidth:    "340px",
-        },
-
-        // Success toasts — green left border
-        success: {
-          duration: 3000,
-          iconTheme: {
-            primary:   "#22C55E",
-            secondary: "var(--elevated)",
-          },
-          style: {
-            background:   "var(--elevated)",
-            color:        "var(--text-primary)",
-            border:       "1px solid var(--border)",
-            borderLeft:   "3px solid #22C55E",
-            borderRadius: "10px",
-            fontSize:     "13.5px",
-            fontWeight:   "500",
-            boxShadow:    "var(--shadow)",
-            padding:      "10px 14px",
-          },
-        },
-
-        // Error toasts — red left border
-        error: {
-          duration: 4000,
-          iconTheme: {
-            primary:   "#EF4444",
-            secondary: "var(--elevated)",
-          },
-          style: {
-            background:   "var(--elevated)",
-            color:        "var(--text-primary)",
-            border:       "1px solid var(--border)",
-            borderLeft:   "3px solid #EF4444",
-            borderRadius: "10px",
-            fontSize:     "13.5px",
-            fontWeight:   "500",
-            boxShadow:    "var(--shadow)",
-            padding:      "10px 14px",
-          },
-        },
-
-        // Loading toasts (used with toast.promise)
-        loading: {
-          iconTheme: {
-            primary:   "var(--accent)",
-            secondary: "var(--elevated)",
-          },
-          style: {
-            background:   "var(--elevated)",
-            color:        "var(--text-secondary)",
-            border:       "1px solid var(--border)",
-            borderLeft:   "3px solid var(--accent)",
-            borderRadius: "10px",
-            fontSize:     "13.5px",
-            fontWeight:   "500",
-            boxShadow:    "var(--shadow)",
-            padding:      "10px 14px",
-          },
-        },
-      }}
-    />
+export function toastSuccess(message: string) {
+  return toast.custom(
+    () => (
+      <div style={baseStyle()}>
+        <CheckCircle size={16} color="var(--color-accent)" style={{ flexShrink: 0 }} />
+        <span>{message}</span>
+      </div>
+    ),
+    { duration: 3000 }
   );
 }
+
+export function toastError(message: string) {
+  return toast.custom(
+    () => (
+      <div style={baseStyle(
+        "1px solid rgba(239,68,68,0.55)",
+        "0 0 16px rgba(239,68,68,0.3), 0 0 32px rgba(239,68,68,0.1)"
+      )}>
+        <XCircle size={16} color="#EF4444" style={{ flexShrink: 0 }} />
+        <span>{message}</span>
+      </div>
+    ),
+    { duration: 3000 }
+  );
+}
+
+export function toastWarning(message: string) {
+  return toast.custom(
+    () => (
+      <div style={baseStyle(
+        "1px solid rgba(234,179,8,0.5)",
+        "0 0 16px rgba(234,179,8,0.25)"
+      )}>
+        <AlertTriangle size={16} color="#EAB308" style={{ flexShrink: 0 }} />
+        <span>{message}</span>
+      </div>
+    ),
+    { duration: 3000 }
+  );
+}
+
+export function toastInfo(message: string) {
+  return toast.custom(
+    () => (
+      <div style={baseStyle()}>
+        <Info size={16} color="var(--color-accent)" style={{ flexShrink: 0 }} />
+        <span>{message}</span>
+      </div>
+    ),
+    { duration: 3000 }
+  );
+}
+
+export function toastLoading(message: string) {
+  return toast.custom(
+    () => (
+      <div style={baseStyle()}>
+        <Loader2
+          size={16}
+          color="var(--color-accent)"
+          style={{ flexShrink: 0, animation: "spin 1s linear infinite" }}
+        />
+        <span>{message}</span>
+      </div>
+    ),
+    { duration: Infinity }
+  );
+}
+
+export { toast };

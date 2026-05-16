@@ -1,89 +1,141 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getIronSession, IronSession } from "iron-session";
+// src/lib/session.ts
+// Manages the Roblox session stored in an encrypted httpOnly cookie.
+// Also exports the /api/auth/roblox/start handler logic used to
+// initiate the PKCE flow (imported by the start route).
+//
+// CORS SOLUTION:
+// The Roblox access_token is ONLY ever stored in a server-set httpOnly cookie.
+// It is never exposed to JavaScript running in the browser, preventing both
+// XSS token theft and any need for the browser to call roblox.com directly.
 
-export interface RobloxSessionData {
-  accessToken: string;
-  refreshToken: string | null;
-  expiresAt: number;
-  userId: string;
-  username: string;
-  displayName: string;
-  picture: string | null;
+import { NextRequest, NextResponse } from "next/server";
+import { decryptToken } from "./robloxAuth";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface RobloxSession {
+  robloxId:       string;
+  robloxUsername: string;
+  robloxAvatar:   string | null;
+  encryptedToken: string;
+  expiresAt:      number; // Unix ms
 }
 
-const SESSION_OPTIONS = {
-  cookieName: "rblxnexus_roblox_session",
-  password: process.env.NEXTAUTH_SECRET!,
-  cookieOptions: {
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: "lax" as const,
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  },
+// ── Cookie config ─────────────────────────────────────────────────────────────
+
+const COOKIE_NAME    = "rblx_session";
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure:   process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path:     "/",
+  maxAge:   60 * 60 * 2, // 2 hours — matches token expiry
 };
 
-/**
- * Save Roblox session to encrypted httpOnly cookie
- */
-export async function saveRobloxSession(
-  res: NextResponse,
-  data: RobloxSessionData
-): Promise<void> {
-  // iron-session works with IncomingMessage/ServerResponse shape
-  // For App Router we manually set the Set-Cookie header via iron-session's
-  // sealData + cookie approach using jose under the hood.
-  // We use a lightweight manual approach compatible with Next.js App Router:
-  const { sealData } = await import("iron-session");
-  const sealed = await sealData(data, {
-    password: SESSION_OPTIONS.password,
-    ttl: SESSION_OPTIONS.cookieOptions.maxAge,
-  });
+// ── Write session ─────────────────────────────────────────────────────────────
 
-  res.cookies.set(SESSION_OPTIONS.cookieName, sealed, {
-    httpOnly: true,
-    secure: SESSION_OPTIONS.cookieOptions.secure,
-    sameSite: SESSION_OPTIONS.cookieOptions.sameSite,
-    maxAge: SESSION_OPTIONS.cookieOptions.maxAge,
-    path: "/",
-  });
+/**
+ * Serialize the Roblox session as JSON and set it in an httpOnly cookie.
+ * Called by the OAuth callback after successful token exchange.
+ */
+export async function setRobloxSession(
+  response: NextResponse,
+  session: RobloxSession
+): Promise<void> {
+  response.cookies.set(
+    COOKIE_NAME,
+    JSON.stringify(session),
+    COOKIE_OPTIONS
+  );
 }
 
+// ── Read session ──────────────────────────────────────────────────────────────
+
 /**
- * Read and decrypt the Roblox session from the request cookie
+ * Read and parse the Roblox session from the incoming request's cookie.
+ * Returns null if missing, malformed, or expired.
  */
 export async function getRobloxSession(
   req: NextRequest
-): Promise<RobloxSessionData | null> {
-  const cookie = req.cookies.get(SESSION_OPTIONS.cookieName)?.value;
-  if (!cookie) return null;
+): Promise<RobloxSession | null> {
+  const raw = req.cookies.get(COOKIE_NAME)?.value;
+  if (!raw) return null;
 
+  let session: RobloxSession;
   try {
-    const { unsealData } = await import("iron-session");
-    const data = await unsealData<RobloxSessionData>(cookie, {
-      password: SESSION_OPTIONS.password,
-    });
-    return data ?? null;
+    session = JSON.parse(raw) as RobloxSession;
   } catch {
     return null;
   }
+
+  // Reject expired sessions
+  if (Date.now() > session.expiresAt) return null;
+
+  return session;
 }
 
 /**
- * Clear the Roblox session cookie
+ * Retrieve the decrypted (raw) Roblox access token from the session cookie.
+ * Used by proxy route handlers to authenticate Roblox API calls.
+ * Returns null if no valid session exists.
  */
-export async function clearRobloxSession(res: NextResponse): Promise<void> {
-  res.cookies.set(SESSION_OPTIONS.cookieName, "", {
-    httpOnly: true,
-    secure: SESSION_OPTIONS.cookieOptions.secure,
-    sameSite: SESSION_OPTIONS.cookieOptions.sameSite,
+export async function getRobloxAccessToken(
+  req: NextRequest
+): Promise<string | null> {
+  const session = await getRobloxSession(req);
+  if (!session) return null;
+  return decryptToken(session.encryptedToken);
+}
+
+// ── Clear session ─────────────────────────────────────────────────────────────
+
+/**
+ * Delete the Roblox session cookie.
+ * Called by the /api/auth/roblox/signout route.
+ */
+export function clearRobloxSession(response: NextResponse): void {
+  response.cookies.set(COOKIE_NAME, "", {
+    ...COOKIE_OPTIONS,
     maxAge: 0,
-    path: "/",
   });
 }
 
+// ── PKCE start helper ─────────────────────────────────────────────────────────
+// This is the logic for /api/auth/roblox/start — kept here to avoid
+// an extra file, but re-exported so the route can import it cleanly.
+
+import { buildRobloxAuthUrl } from "./robloxAuth";
+
 /**
- * Check if a session token is expired
+ * Initiate the Roblox PKCE flow:
+ * 1. Generate verifier + challenge + state
+ * 2. Store verifier + state in short-lived httpOnly cookies
+ * 3. Redirect the browser to Roblox's authorization endpoint
+ *
+ * The browser never sees the verifier or client secret.
  */
-export function isSessionExpired(session: RobloxSessionData): boolean {
-  return Date.now() >= session.expiresAt;
+export function startRobloxOAuth(req: NextRequest): NextResponse {
+  const { url, verifier, state } = buildRobloxAuthUrl();
+
+  const response = NextResponse.redirect(url);
+
+  const pkceOptions = {
+    httpOnly: true,
+    secure:   process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path:     "/",
+    maxAge:   60 * 10, // 10 minutes — PKCE cookies are short-lived
+  };
+
+  response.cookies.set("rblx_pkce_verifier", verifier, pkceOptions);
+  response.cookies.set("rblx_pkce_state",    state,    pkceOptions);
+
+  return response;
 }
+
+// ── /api/auth/roblox/start route handler (inline) ────────────────────────────
+// Create src/app/api/auth/roblox/start/route.ts with this content:
+//
+//   import { startRobloxOAuth } from "@/lib/session";
+//   import { NextRequest } from "next/server";
+//   export function GET(req: NextRequest) { return startRobloxOAuth(req); }
