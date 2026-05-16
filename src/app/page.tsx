@@ -1,4 +1,5 @@
 "use client";
+import { Suspense } from "react";
 // src/app/page.tsx
 // Sci-fi animations applied:
 //  ✓ Particle canvas    — already existed, kept + enhanced
@@ -137,7 +138,7 @@ function GoogleIcon({ size = 18 }: { size?: number }) {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-export default function LoginPage() {
+function LoginPage() {
   const router                                      = useRouter();
   const { status }                                  = useSession();
   const [loading,          setLoading]              = useState(false);
@@ -353,5 +354,13 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPage />
+    </Suspense>
   );
 }
