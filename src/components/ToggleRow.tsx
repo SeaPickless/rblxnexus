@@ -4,11 +4,11 @@
 "use client";
 
 import { useState } from "react";
-import type { LucideIcon } from "lucide-react";
+
 import { setToggle, type Toggles } from "@/lib/toggles";
 
 interface ToggleRowProps {
-  icon:        LucideIcon;
+  icon:        React.ElementType;
   name:        string;
   description: string;
   toggleKey:   keyof Toggles;

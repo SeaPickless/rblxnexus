@@ -1,115 +1,123 @@
-// src/components/ToggleRow.tsx
-// Toggle switch row for the Settings hub. Saves state to localStorage rn_toggles.
+// src/lib/toggles.ts
+// Performance toggle state management.
+// Reads/writes the rn_toggles localStorage key.
+// All toggle access in components must go through these helpers.
 
-"use client";
+const STORAGE_KEY = "rn_toggles";
 
-import { useState } from "react";
-
-import { setToggle, type Toggles } from "@/lib/toggles";
-
-interface ToggleRowProps {
-  icon:        React.ElementType;
-  name:        string;
-  description: string;
-  toggleKey:   keyof Toggles;
-  value:       boolean;
-  onChange?:   (key: keyof Toggles, value: boolean) => void;
+export interface Toggles {
+  /** Adds .no-animations to body — kills all CSS animations/transitions */
+  disableAnimations: boolean;
+  /** Collapses sidebar to 48px icon-only mode */
+  compactSidebar: boolean;
+  /** Auto-pings all API Health endpoints every 60s while hub is active */
+  autoRefresh: boolean;
+  /** Shows numeric Roblox user IDs alongside usernames everywhere */
+  showUserIds: boolean;
+  /** Skips avatar/thumbnail images — shows initials placeholders instead */
+  lowBandwidth: boolean;
 }
 
-export default function ToggleRow({
-  icon: Icon, name, description, toggleKey, value, onChange,
-}: ToggleRowProps) {
-  const [on, setOn] = useState(value);
-  const [hovered, setHovered] = useState(false);
+export const DEFAULT_TOGGLES: Toggles = {
+  disableAnimations: false,
+  compactSidebar:    false,
+  autoRefresh:       false,
+  showUserIds:       false,
+  lowBandwidth:      false,
+};
 
-  function handleToggle() {
-    const next = !on;
-    setOn(next);
-    setToggle(toggleKey, next);
-    onChange?.(toggleKey, next);
+export const TOGGLE_META: Record<
+  keyof Toggles,
+  { label: string; description: string }
+> = {
+  disableAnimations: {
+    label:       "Disable Animations",
+    description: "Turns off all CSS animations and transitions for maximum performance.",
+  },
+  compactSidebar: {
+    label:       "Compact Sidebar",
+    description: "Collapses the sidebar to icon-only mode (48px). Labels appear as tooltips on hover.",
+  },
+  autoRefresh: {
+    label:       "Auto Refresh",
+    description: "API Health Monitor auto-pings all endpoints every 60 seconds while active.",
+  },
+  showUserIds: {
+    label:       "Show User IDs",
+    description: "Displays numeric Roblox user IDs alongside usernames throughout the app.",
+  },
+  lowBandwidth: {
+    label:       "Low Bandwidth Mode",
+    description: "Skips loading avatar and thumbnail images. Initials-based placeholders shown instead.",
+  },
+};
+
+/**
+ * Read all toggle states from localStorage.
+ * Merges with defaults so new toggles are always defined.
+ * Safe to call on server (returns defaults).
+ */
+export function getToggles(): Toggles {
+  if (typeof window === "undefined") return { ...DEFAULT_TOGGLES };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_TOGGLES };
+    return { ...DEFAULT_TOGGLES, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_TOGGLES };
   }
+}
 
-  return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display:      "flex",
-        alignItems:   "center",
-        gap:          16,
-        padding:      "16px 20px",
-        borderRadius: "8px",
-        background:   hovered ? "rgba(var(--color-accent-rgb),0.04)" : "var(--color-surface)",
-        border:       `1px solid ${hovered ? "rgba(var(--color-accent-rgb),0.25)" : "rgba(var(--color-accent-rgb),0.12)"}`,
-        transition:   "all 200ms ease",
-        cursor:       "pointer",
-      }}
-      onClick={handleToggle}
-    >
-      {/* Icon */}
-      <div style={{
-        width: 36, height: 36, flexShrink: 0,
-        borderRadius: "8px",
-        background: on ? "rgba(var(--color-accent-rgb),0.12)" : "var(--color-elevated)",
-        border: `1px solid ${on ? "rgba(var(--color-accent-rgb),0.4)" : "rgba(var(--color-accent-rgb),0.1)"}`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        transition: "all 200ms ease",
-        boxShadow: on ? "0 0 10px rgba(var(--color-accent-rgb),0.2)" : "none",
-      }}>
-        <Icon size={16} style={{ color: on ? "var(--color-accent)" : "var(--color-text-muted)", transition: "color 200ms ease" }} />
-      </div>
+/**
+ * Set a single toggle and persist to localStorage.
+ * Also applies side-effects (body class mutations) immediately.
+ */
+export function setToggle<K extends keyof Toggles>(key: K, value: Toggles[K]): void {
+  if (typeof window === "undefined") return;
+  const current = getToggles();
+  const next = { ...current, [key]: value };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // ignore write failures
+  }
+  applySideEffects(key, value as boolean);
+}
 
-      {/* Text */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{
-          fontFamily: "var(--font-rajdhani,'Rajdhani'),sans-serif",
-          fontSize: "14px", fontWeight: 600,
-          color: on ? "var(--color-text-primary)" : "var(--color-text-secondary)",
-          letterSpacing: "0.04em",
-          margin: 0, marginBottom: 2,
-          transition: "color 200ms ease",
-        }}>
-          {name}
-        </p>
-        <p style={{
-          fontSize: "12px",
-          color: "var(--color-text-muted)",
-          margin: 0,
-          lineHeight: 1.4,
-        }}>
-          {description}
-        </p>
-      </div>
-
-      {/* Toggle switch */}
-      <div
-        style={{
-          width: 44, height: 24, flexShrink: 0,
-          borderRadius: "999px",
-          background: on
-            ? "var(--color-accent)"
-            : "rgba(var(--color-accent-rgb),0.15)",
-          boxShadow: on
-            ? "0 0 12px rgba(var(--color-accent-rgb),0.5), 0 0 24px rgba(var(--color-accent-rgb),0.2)"
-            : "none",
-          position: "relative",
-          transition: "all 250ms ease",
-          border: `1px solid ${on ? "var(--color-accent)" : "rgba(var(--color-accent-rgb),0.2)"}`,
-        }}
-        onClick={(e) => { e.stopPropagation(); handleToggle(); }}
-      >
-        {/* Thumb */}
-        <div style={{
-          position: "absolute",
-          top: 2,
-          left: on ? "calc(100% - 20px - 2px)" : "2px",
-          width: 18, height: 18,
-          borderRadius: "50%",
-          background: on ? "#fff" : "rgba(var(--color-accent-rgb),0.5)",
-          boxShadow: on ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
-          transition: "left 250ms ease, background 250ms ease",
-        }} />
-      </div>
-    </div>
+/**
+ * Replace the entire toggle state object.
+ * Useful when saving from the settings page.
+ */
+export function saveToggles(toggles: Toggles): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toggles));
+  } catch {
+    // ignore
+  }
+  // Re-apply all side effects
+  (Object.keys(toggles) as (keyof Toggles)[]).forEach((key) =>
+    applySideEffects(key, toggles[key] as boolean)
   );
+}
+
+/**
+ * Apply DOM side effects for a toggle change.
+ * Called automatically by setToggle and saveToggles.
+ */
+function applySideEffects(key: keyof Toggles, value: boolean): void {
+  switch (key) {
+    case "disableAnimations":
+      if (value) document.body.classList.add("no-animations");
+      else        document.body.classList.remove("no-animations");
+      break;
+    case "compactSidebar":
+      if (value) document.body.classList.add("compact-sidebar");
+      else        document.body.classList.remove("compact-sidebar");
+      break;
+    // autoRefresh, showUserIds, lowBandwidth have no immediate DOM side effects —
+    // they are read by the relevant hub/component at render time.
+    default:
+      break;
+  }
 }
