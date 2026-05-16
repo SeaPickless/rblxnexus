@@ -1,34 +1,29 @@
 // src/app/hub/layout.tsx
-// Shell layout for ALL hub pages (/hub/*).
-// Renders Sidebar + Topbar + main content area.
-// This is why hub navigation works — without this file
-// the Sidebar never renders on any hub page.
-
-import { SessionProvider } from "next-auth/react";
+import SessionProviderWrapper from "@/components/SessionProviderWrapper";
 import Sidebar from "@/components/Sidebar";
 import Topbar  from "@/components/Topbar";
 
 export default function HubLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
+    <SessionProviderWrapper>
       <div
         style={{
-          display:   "flex",
-          minHeight: "100vh",
-          background: "var(--color-base)",
+          display:        "flex",
+          minHeight:      "100vh",
+          background:     "var(--color-base)",
         }}
       >
-        {/* ── Left sidebar — always visible on desktop, drawer on mobile ── */}
+        {/* Sidebar — desktop sticky, mobile drawer */}
         <Sidebar />
 
-        {/* ── Right: topbar + page content ── */}
+        {/* Main content area */}
         <div
           style={{
-            flex:      1,
-            display:   "flex",
+            flex:          1,
+            display:       "flex",
             flexDirection: "column",
-            minWidth:  0, // prevents flex overflow
-            minHeight: "100vh",
+            minWidth:      0,
+            minHeight:     "100vh",
           }}
         >
           <Topbar />
@@ -37,6 +32,6 @@ export default function HubLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
-    </SessionProvider>
+    </SessionProviderWrapper>
   );
 }

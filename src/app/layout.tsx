@@ -1,13 +1,9 @@
 // src/app/layout.tsx
-// Root layout — wraps entire app in SessionProvider so useSession()
-// works on the login page. Hub pages get their OWN SessionProvider
-// inside src/app/hub/layout.tsx.
-
 import type { Metadata } from "next";
 import { Orbitron, Rajdhani, JetBrains_Mono } from "next/font/google";
-import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
+import SessionProviderWrapper from "@/components/SessionProviderWrapper";
 
 const orbitron = Orbitron({
   subsets: ["latin"],
@@ -80,13 +76,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           aria-hidden="true"
           className="pointer-events-none fixed bottom-0 right-0 z-0 h-[600px] w-[600px] translate-x-1/3 translate-y-1/3"
           style={{
-            background: "radial-gradient(circle,rgba(var(--color-accent-rgb),0.07) 0%,transparent 70%)",
+            background:
+              "radial-gradient(circle,rgba(var(--color-accent-rgb),0.07) 0%,transparent 70%)",
           }}
         />
 
-        <SessionProvider>
+        <SessionProviderWrapper>
           <div className="relative z-10">{children}</div>
-        </SessionProvider>
+        </SessionProviderWrapper>
 
         <Toaster
           position="top-right"
